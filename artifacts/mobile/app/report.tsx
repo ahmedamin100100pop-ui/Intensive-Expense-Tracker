@@ -1,7 +1,10 @@
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,11 +18,13 @@ import { getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
+import { generateAndSharePDF } from "@/utils/generatePDF";
 
 export default function ReportScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
-  const { summary, userProfile } = useApp();
+  const { summary, userProfile, currentMonthExpenses, expenses } = useApp();
+  const [exporting, setExporting] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -37,13 +42,39 @@ export default function ReportScreen() {
   const pctLabel = pct >= 0
     ? `${pct.toFixed(0)}% more than ${prevMonthName}`
     : `${Math.abs(pct).toFixed(0)}% less than ${prevMonthName}`;
-  const pctColor = pct > 5 ? col.warning : pct < -5 ? col.success : col.mutedForeground;
 
-  const bestCategory = (() => {
-    const cats = Object.entries(summary.categoryTotals) as [string, number][];
-    const sorted = cats.filter(([, v]) => v > 0).sort((a, b) => a[1] - b[1]);
-    return sorted[0]?.[0] ?? null;
+  // Monthly trend data for PDF
+  const monthlyData = (() => {
+    const monthMap: Record<string, number> = {};
+    expenses.forEach((e) => { const k = e.date.slice(0, 7); monthMap[k] = (monthMap[k] ?? 0) + e.amount; });
+    return Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0])).slice(-6)
+      .map(([k, v]) => ({
+        label: new Date(k + "-01").toLocaleDateString("en-US", { month: "short" }),
+        amount: v,
+      }));
   })();
+
+  const handleExport = async () => {
+    if (currentMonthExpenses.length === 0) {
+      Alert.alert("No data", "There are no expenses this month to export.");
+      return;
+    }
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setExporting(true);
+      await generateAndSharePDF({
+        expenses: currentMonthExpenses,
+        userProfile,
+        periodLabel: monthName,
+        periodType: "month",
+        monthlyData,
+      });
+    } catch {
+      Alert.alert("Export failed", "Could not generate the PDF. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: col.background }]}>
@@ -76,24 +107,17 @@ export default function ReportScreen() {
 
         {/* Key stats */}
         <View style={styles.statsGrid}>
-          <View style={[styles.statBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-            <Text style={[styles.statLabel, { color: col.mutedForeground }]}>Top category</Text>
-            <Text style={[styles.statValue, { color: col.foreground }]}>
-              {summary.topCategory ? getCategoryLabel(summary.topCategory) : "—"}
-            </Text>
-          </View>
-          <View style={[styles.statBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-            <Text style={[styles.statLabel, { color: col.mutedForeground }]}>Daily average</Text>
-            <Text style={[styles.statValue, { color: col.foreground }]}>${summary.averageDaily.toFixed(0)}</Text>
-          </View>
-          <View style={[styles.statBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-            <Text style={[styles.statLabel, { color: col.mutedForeground }]}>Weekend total</Text>
-            <Text style={[styles.statValue, { color: col.foreground }]}>${summary.weekendTotal.toFixed(0)}</Text>
-          </View>
-          <View style={[styles.statBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-            <Text style={[styles.statLabel, { color: col.mutedForeground }]}>Small purchases</Text>
-            <Text style={[styles.statValue, { color: col.foreground }]}>{summary.smallPurchasesPercent.toFixed(0)}%</Text>
-          </View>
+          {[
+            { label: "Top category", value: summary.topCategory ? getCategoryLabel(summary.topCategory) : "—" },
+            { label: "Daily average", value: `$${summary.averageDaily.toFixed(0)}` },
+            { label: "Weekend total", value: `$${summary.weekendTotal.toFixed(0)}` },
+            { label: "Small purchases", value: `${summary.smallPurchasesPercent.toFixed(0)}%` },
+          ].map((s) => (
+            <View key={s.label} style={[styles.statBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
+              <Text style={[styles.statLabel, { color: col.mutedForeground }]}>{s.label}</Text>
+              <Text style={[styles.statValue, { color: col.foreground }]}>{s.value}</Text>
+            </View>
+          ))}
         </View>
 
         {/* Budget status */}
@@ -101,22 +125,15 @@ export default function ReportScreen() {
           <View style={[styles.budgetBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
             <Text style={[styles.boxTitle, { color: col.foreground }]}>Budget status</Text>
             <View style={styles.budgetRow}>
-              <Text style={[styles.budgetStat, { color: col.foreground }]}>
-                ${summary.totalCurrentMonth.toFixed(0)}
-              </Text>
-              <Text style={[styles.budgetOf, { color: col.mutedForeground }]}>
-                of ${userProfile.monthlyBudget.toFixed(0)} budget
-              </Text>
+              <Text style={[styles.budgetStat, { color: col.foreground }]}>${summary.totalCurrentMonth.toFixed(0)}</Text>
+              <Text style={[styles.budgetOf, { color: col.mutedForeground }]}>of ${userProfile.monthlyBudget.toFixed(0)} budget</Text>
             </View>
             <View style={[styles.budgetTrack, { backgroundColor: col.muted }]}>
               <View
-                style={[
-                  styles.budgetFill,
-                  {
-                    width: `${Math.min((summary.totalCurrentMonth / userProfile.monthlyBudget) * 100, 100)}%`,
-                    backgroundColor: summary.totalCurrentMonth > userProfile.monthlyBudget ? col.destructive : col.success,
-                  },
-                ]}
+                style={[styles.budgetFill, {
+                  width: `${Math.min((summary.totalCurrentMonth / userProfile.monthlyBudget) * 100, 100)}%`,
+                  backgroundColor: summary.totalCurrentMonth > userProfile.monthlyBudget ? col.destructive : col.success,
+                }]}
               />
             </View>
             <Text style={[styles.budgetStatus, { color: summary.totalCurrentMonth > userProfile.monthlyBudget ? col.destructive : col.success }]}>
@@ -141,6 +158,22 @@ export default function ReportScreen() {
               : `You're spending a balanced amount. Continue monitoring your ${summary.topCategory ? getCategoryLabel(summary.topCategory).toLowerCase() : ""} category as it's your biggest expense.`}
           </Text>
         </View>
+
+        {/* Export button */}
+        <TouchableOpacity
+          style={[styles.exportBtn, { backgroundColor: col.primary, opacity: exporting ? 0.7 : 1, borderRadius: colors.radius }]}
+          onPress={handleExport}
+          disabled={exporting}
+        >
+          {exporting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Feather name="file-text" size={18} color="#fff" />
+              <Text style={styles.exportBtnText}>Export Monthly Report as PDF</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -171,7 +204,9 @@ const styles = StyleSheet.create({
   budgetTrack: { height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 6 },
   budgetFill: { height: "100%", borderRadius: 3 },
   budgetStatus: { fontSize: 13, fontWeight: "600" },
-  recBox: { padding: 18, borderWidth: 1, marginBottom: 8 },
+  recBox: { padding: 18, borderWidth: 1, marginBottom: 16 },
   recTitle: { fontSize: 15, fontWeight: "700", marginBottom: 8 },
   recText: { fontSize: 14, lineHeight: 20 },
+  exportBtn: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
+  exportBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

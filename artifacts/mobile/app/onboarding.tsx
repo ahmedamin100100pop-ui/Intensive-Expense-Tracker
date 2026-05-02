@@ -12,12 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  FadeInRight,
-  FadeOutLeft,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
@@ -33,22 +27,26 @@ const GOALS: { id: Goal; label: string; desc: string; icon: keyof typeof Feather
   { id: "track-budget", label: "Track monthly budget", desc: "Stay within your spending limit", icon: "target" },
 ];
 
+const TOTAL_STEPS = 4;
+
 export default function OnboardingScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
   const { setUserProfile } = useApp();
 
   const [step, setStep] = useState(0);
+  const [name, setName] = useState("");
   const [income, setIncome] = useState("");
   const [budget, setBudget] = useState("");
   const [goal, setGoal] = useState<Goal>("understand");
 
   const handleNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (step < 2) {
+    if (step < TOTAL_STEPS - 1) {
       setStep((s) => s + 1);
     } else {
       setUserProfile({
+        name: name.trim() || "User",
         monthlyIncome: parseFloat(income) || 4500,
         monthlyBudget: parseFloat(budget) || 2500,
         savingsGoal: (parseFloat(income) || 4500) * 0.2,
@@ -60,8 +58,9 @@ export default function OnboardingScreen() {
   };
 
   const canProceed =
-    step === 0 ? income.length > 0 && parseFloat(income) > 0
-    : step === 1 ? budget.length > 0 && parseFloat(budget) > 0
+    step === 0 ? name.trim().length > 0
+    : step === 1 ? income.length > 0 && parseFloat(income) > 0
+    : step === 2 ? budget.length > 0 && parseFloat(budget) > 0
     : true;
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -75,8 +74,8 @@ export default function OnboardingScreen() {
           showsVerticalScrollIndicator={false}
         >
           {/* Progress */}
-          <Animated.View entering={FadeIn} style={styles.progress}>
-            {[0, 1, 2].map((i) => (
+          <View style={styles.progress}>
+            {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
               <View
                 key={i}
                 style={[
@@ -88,10 +87,35 @@ export default function OnboardingScreen() {
                 ]}
               />
             ))}
-          </Animated.View>
+          </View>
 
           {step === 0 && (
-            <Animated.View entering={FadeInRight} key="step0">
+            <View key="step0">
+              <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
+                <Feather name="user" size={32} color={col.primary} />
+              </View>
+              <Text style={[styles.heading, { color: col.foreground }]}>
+                What's your name?
+              </Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>
+                Your reports will be personalized with your name
+              </Text>
+              <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
+                <TextInput
+                  style={[styles.input, { color: col.foreground }]}
+                  placeholder="Your name"
+                  placeholderTextColor={col.mutedForeground}
+                  value={name}
+                  onChangeText={setName}
+                  autoFocus
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
+          )}
+
+          {step === 1 && (
+            <View key="step1">
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
                 <Feather name="dollar-sign" size={32} color={col.primary} />
               </View>
@@ -113,11 +137,11 @@ export default function OnboardingScreen() {
                   autoFocus
                 />
               </View>
-            </Animated.View>
+            </View>
           )}
 
-          {step === 1 && (
-            <Animated.View entering={FadeInRight} key="step1">
+          {step === 2 && (
+            <View key="step2">
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
                 <Feather name="target" size={32} color={col.primary} />
               </View>
@@ -144,11 +168,11 @@ export default function OnboardingScreen() {
                   Budget is higher than income — are you sure?
                 </Text>
               )}
-            </Animated.View>
+            </View>
           )}
 
-          {step === 2 && (
-            <Animated.View entering={FadeInRight} key="step2">
+          {step === 3 && (
+            <View key="step3">
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
                 <Feather name="flag" size={32} color={col.primary} />
               </View>
@@ -187,7 +211,7 @@ export default function OnboardingScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
-            </Animated.View>
+            </View>
           )}
         </ScrollView>
 
@@ -208,18 +232,15 @@ export default function OnboardingScreen() {
           <TouchableOpacity
             style={[
               styles.nextBtn,
-              {
-                backgroundColor: canProceed ? col.primary : col.muted,
-                flex: 1,
-              },
+              { backgroundColor: canProceed ? col.primary : col.muted, flex: 1 },
             ]}
             onPress={handleNext}
             disabled={!canProceed}
           >
             <Text style={[styles.nextText, { color: canProceed ? "#fff" : col.mutedForeground }]}>
-              {step === 2 ? "Get started" : "Continue"}
+              {step === TOTAL_STEPS - 1 ? "Get started" : "Continue"}
             </Text>
-            <Feather name={step === 2 ? "check" : "arrow-right"} size={18} color={canProceed ? "#fff" : col.mutedForeground} />
+            <Feather name={step === TOTAL_STEPS - 1 ? "check" : "arrow-right"} size={18} color={canProceed ? "#fff" : col.mutedForeground} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -234,60 +255,36 @@ const styles = StyleSheet.create({
   progress: { flexDirection: "row", gap: 6, marginBottom: 40, alignItems: "center" },
   dot: { height: 8, borderRadius: 4 },
   iconBig: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
+    width: 72, height: 72, borderRadius: 36,
+    alignItems: "center", justifyContent: "center", marginBottom: 24,
   },
   heading: { fontSize: 26, fontWeight: "700", marginBottom: 8, letterSpacing: -0.5 },
   subheading: { fontSize: 15, lineHeight: 22, marginBottom: 32 },
   inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderRadius: colors.radius,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    flexDirection: "row", alignItems: "center",
+    borderWidth: 1.5, borderRadius: colors.radius,
+    paddingHorizontal: 16, paddingVertical: 14,
   },
   currency: { fontSize: 22, fontWeight: "600", marginRight: 8 },
   input: { flex: 1, fontSize: 24, fontWeight: "600" },
   hint: { marginTop: 8, fontSize: 13 },
   goals: { gap: 10 },
   goalItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    borderWidth: 1.5,
-    borderRadius: colors.radius,
-    gap: 12,
+    flexDirection: "row", alignItems: "center",
+    padding: 14, borderWidth: 1.5, borderRadius: colors.radius, gap: 12,
   },
   goalIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   goalText: { flex: 1 },
   goalLabel: { fontSize: 14, fontWeight: "600" },
   goalDesc: { fontSize: 12, marginTop: 1 },
-  footer: {
-    flexDirection: "row",
-    gap: 12,
-    borderTopWidth: 0,
-    paddingTop: 12,
-  },
+  footer: { flexDirection: "row", gap: 12, paddingTop: 12 },
   backBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 52, height: 52, borderRadius: 26,
+    borderWidth: 1.5, alignItems: "center", justifyContent: "center",
   },
   nextBtn: {
-    height: 52,
-    borderRadius: 26,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+    height: 52, borderRadius: 26,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
   },
   nextText: { fontSize: 16, fontWeight: "600" },
 });

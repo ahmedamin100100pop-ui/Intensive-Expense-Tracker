@@ -40,6 +40,7 @@ export interface Expense {
 }
 
 export interface UserProfile {
+  name: string;
   monthlyIncome: number;
   monthlyBudget: number;
   savingsGoal: number;
@@ -131,6 +132,7 @@ const SAMPLE_EXPENSES: Expense[] = [
 ];
 
 const DEFAULT_PROFILE: UserProfile = {
+  name: "",
   monthlyIncome: 4500,
   monthlyBudget: 2500,
   savingsGoal: 1000,
