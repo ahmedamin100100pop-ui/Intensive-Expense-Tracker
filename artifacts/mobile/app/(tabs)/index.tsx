@@ -66,18 +66,27 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.greeting, { color: col.mutedForeground }]}>Good morning</Text>
+            <Text style={[styles.greeting, { color: col.mutedForeground }]}>
+              {userProfile?.name ? `Hi, ${userProfile.name.split(" ")[0]}` : "Good morning"}
+            </Text>
             <Text style={[styles.monthLabel, { color: col.foreground }]}>
               {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push("/report")}
-            style={[styles.reportBtn, { backgroundColor: col.secondary }]}
-          >
-            <Feather name="bar-chart-2" size={16} color={col.primary} />
-            <Text style={[styles.reportText, { color: col.primary }]}>Report</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => router.push("/report")}
+              style={[styles.headerBtn, { backgroundColor: col.secondary }]}
+            >
+              <Feather name="bar-chart-2" size={16} color={col.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/settings")}
+              style={[styles.headerBtn, { backgroundColor: col.secondary }]}
+            >
+              <Feather name="settings" size={16} color={col.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Hero spending card */}
@@ -186,8 +195,8 @@ const styles = StyleSheet.create({
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
   greeting: { fontSize: 13, fontWeight: "500" },
   monthLabel: { fontSize: 20, fontWeight: "700", marginTop: 2, letterSpacing: -0.5 },
-  reportBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
-  reportText: { fontSize: 13, fontWeight: "600" },
+  headerActions: { flexDirection: "row", gap: 8, alignItems: "center" },
+  headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   heroCard: { padding: 20, marginBottom: 14 },
   heroLabel: { color: "rgba(255,255,255,0.75)", fontSize: 13, fontWeight: "500", marginBottom: 4 },
   heroAmount: { color: "#fff", fontSize: 40, fontWeight: "800", letterSpacing: -1, marginBottom: 10 },

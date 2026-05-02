@@ -85,6 +85,8 @@ interface AppContextType {
   isLoading: boolean;
   currentMonthExpenses: Expense[];
   previousMonthExpenses: Expense[];
+  restoreBackup: (data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[] }) => void;
+  clearAllData: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -347,6 +349,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [expenses, userProfile, persist],
   );
 
+  const restoreBackup = useCallback(
+    (data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[] }) => {
+      const nextExpenses = data.expenses ?? [];
+      const nextProfile = data.userProfile ?? null;
+      const nextBudgets = data.categoryBudgets?.length ? data.categoryBudgets : DEFAULT_BUDGETS;
+      setExpenses(nextExpenses);
+      setUserProfileState(nextProfile);
+      setCategoryBudgets(nextBudgets);
+      persist(nextExpenses, nextProfile, nextBudgets);
+    },
+    [persist],
+  );
+
+  const clearAllData = useCallback(() => {
+    setExpenses([]);
+    setUserProfileState(null);
+    setCategoryBudgets(DEFAULT_BUDGETS);
+    persist([], null, DEFAULT_BUDGETS);
+  }, [persist]);
+
   const currentMonthExpenses = useMemo(
     () => expenses.filter((e) => e.date.startsWith(getCurrentMonthKey()) && !e.isIncome),
     [expenses],
@@ -378,6 +400,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         currentMonthExpenses,
         previousMonthExpenses,
+        restoreBackup,
+        clearAllData,
       }}
     >
       {children}
