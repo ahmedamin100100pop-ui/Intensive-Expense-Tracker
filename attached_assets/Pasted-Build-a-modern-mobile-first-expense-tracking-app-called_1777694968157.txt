@@ -1,0 +1,341 @@
+Build a modern mobile-first expense tracking app called “MoneyMind”.
+
+The goal of this app is to help normal people understand where their money goes without needing finance knowledge. The app should be simple, beautiful, friendly, and focused on spending behavior analysis, not complicated accounting.
+
+The target users are non-finance people who want answers like:
+- Where did my money go this month?
+- What category do I spend the most on?
+- Am I spending more than usual?
+- What habits are causing me to lose money?
+- How can I improve my spending?
+
+The app should feel like a personal money coach, not a banking or accounting app.
+
+Core idea:
+Create a mobile app that allows users to add expenses easily, see beautiful visualizations, and receive clear behavior-based insights about their money.
+
+Main requirements:
+
+1. App style and UI direction
+Design the UI yourself using the best modern mobile design approach.
+The UI should be clean, soft, elegant, and friendly.
+
+Use:
+- Rounded cards
+- Modern icons
+- Soft shadows
+- Smooth spacing
+- Beautiful charts
+- Friendly colors
+- Large readable numbers
+- Minimal text
+- Mobile-first layout
+- Professional but warm design
+- Light mode by default
+- Optional dark mode if possible
+
+The design should not look like a spreadsheet, bank dashboard, or accounting system. It should look like a modern consumer app, similar in quality to finance apps like Copilot, Revolut, Wallet, or modern wellness apps.
+
+Use icons for categories:
+- Food
+- Transport
+- Shopping
+- Rent
+- Bills
+- Health
+- Entertainment
+- Education
+- Travel
+- Family
+- Other
+
+2. Main app screens
+
+Create these screens:
+
+A. Onboarding screen
+Purpose: understand the user’s goal.
+
+Ask:
+- What is your monthly income?
+- What is your monthly spending limit?
+- What is your main goal?
+
+Goal options:
+- Understand my spending
+- Save more money
+- Reduce food expenses
+- Control shopping
+- Track monthly budget
+
+The onboarding should be short and beautiful.
+
+B. Home Dashboard
+This is the main screen.
+
+Show:
+- Total spent this month
+- Remaining budget
+- Top spending category
+- Spending compared to last month
+- A friendly money insight card
+
+Example cards:
+- “You spent $1,240 this month”
+- “Food is your biggest category”
+- “You are spending 18% more than last month”
+- “Most of your spending happens on weekends”
+
+The dashboard should immediately answer:
+“Where is my money going?”
+
+C. Add Expense screen
+Make this extremely simple.
+
+Fields:
+- Amount
+- Category
+- Date
+- Payment method
+- Note
+
+Payment methods:
+- Cash
+- Card
+- Bank transfer
+- Wallet
+
+The user should be able to add an expense in less than 10 seconds.
+
+D. Analytics screen
+Show visual data analysis.
+
+Include:
+- Donut chart: spending by category
+- Line chart: spending over time
+- Bar chart: category comparison
+- Calendar heatmap or daily spending view if possible
+- Monthly comparison section
+
+The visualizations should be clear and beautiful for non-technical users.
+
+E. Insights screen
+This is the smart behavior analysis section.
+
+Show plain-language insights such as:
+- “You spend the most money on weekends.”
+- “Your food spending increased by 24% compared to last month.”
+- “Small purchases under $10 made up 31% of your spending.”
+- “You usually spend more after salary day.”
+- “Shopping expenses are highest in the first week of the month.”
+- “You had 3 unusually large expenses this month.”
+
+Make insights appear as beautiful cards with icons.
+
+F. Budget screen
+Allow users to set:
+- Monthly budget
+- Category budgets
+- Savings goal
+
+Show progress bars for each budget.
+
+Example:
+Food budget: $300
+Spent: $240
+Remaining: $60
+
+G. Monthly Report screen
+Show a simple report:
+- Total spent this month
+- Top category
+- Best improvement
+- Biggest increase
+- Spending compared to previous month
+- Simple recommendation
+
+Example:
+“You spent $1,840 in April. Your top category was Food. You spent 12% less than March. Your shopping increased by 18%.”
+
+3. Data model
+
+Create a simple data model for expenses.
+
+Expense fields:
+- id
+- amount
+- category
+- date
+- note
+- paymentMethod
+- createdAt
+
+User financial profile:
+- monthlyIncome
+- monthlyBudget
+- savingsGoal
+- selectedGoal
+
+Category budget:
+- category
+- budgetAmount
+- spentAmount
+
+4. Analytics logic
+
+The app should calculate:
+
+- Total monthly spending
+- Spending by category
+- Percentage of spending by category
+- Daily spending
+- Weekly spending
+- Monthly spending trend
+- Top category
+- Average daily spending
+- Spending compared to previous month
+- Weekend vs weekday spending
+- Small purchases total
+- Unusual large expenses
+- Remaining budget
+- Budget progress
+
+Behavior insights should be generated from real calculations, not random text.
+
+Example logic:
+- If food spending is highest, show: “Food is your biggest spending category this month.”
+- If weekend spending is higher than weekday spending, show: “You spend more on weekends.”
+- If current month spending is higher than last month, show: “You are spending more than last month.”
+- If small purchases are more than 20% of total spending, show: “Small purchases are adding up.”
+- If a category exceeds 80% of its budget, show a warning.
+- If a category exceeds the budget, show an alert.
+
+5. Visualizations
+
+Use beautiful charts.
+
+Required charts:
+- Donut chart for category breakdown
+- Line chart for monthly or weekly spending trend
+- Bar chart for category comparison
+- Progress bars for budget usage
+
+The charts should have:
+- Clean labels
+- Nice spacing
+- Friendly colors
+- No complicated financial terms
+
+6. Sample data
+
+Include realistic sample data so the app looks complete immediately.
+
+Create sample expenses across several categories:
+- Food
+- Transport
+- Shopping
+- Bills
+- Rent
+- Entertainment
+- Health
+- Education
+
+Use dates across the current month and previous month so the dashboard and analytics can compare spending.
+
+7. Tone and writing style
+
+All text inside the app should be simple and friendly.
+
+Use phrases like:
+- “You’re doing well”
+- “Food is your biggest category”
+- “Small purchases are adding up”
+- “You spent less than last month”
+- “You may exceed your budget soon”
+- “Nice improvement”
+
+Avoid complex terms like:
+- Cash flow analysis
+- Liabilities
+- Assets
+- Portfolio
+- Depreciation
+- Accounting balance
+
+8. Navigation
+
+Create bottom navigation with these tabs:
+- Home
+- Add
+- Analytics
+- Insights
+- Budget
+
+Use modern icons for each tab.
+
+9. Technical expectations
+
+Build a working front-end prototype first.
+
+Use clean, maintainable code.
+Use reusable components:
+- ExpenseCard
+- InsightCard
+- BudgetProgressCard
+- CategoryIcon
+- SpendingChart
+- DashboardCard
+- AddExpenseForm
+
+Use state management suitable for the chosen framework.
+Store sample data locally for now.
+Make it easy to later connect to a backend.
+
+10. Future backend direction
+
+Design the app so it can later connect to:
+- FastAPI backend
+- PostgreSQL or Supabase database
+- Python analytics engine using pandas, numpy, and Plotly
+
+But for now, build the front-end with local sample data and real calculation logic.
+
+11. Extra smart features
+
+Add a “Money Personality” card.
+
+Possible personalities:
+- Weekend Spender
+- Food Lover
+- Small Purchases Collector
+- Careful Planner
+- Impulse Shopper
+- Early Month Spender
+
+Calculate it based on spending behavior.
+
+Example:
+If weekend spending is high, show:
+“Your money personality this month: Weekend Spender.”
+
+If food is the top category, show:
+“Your money personality this month: Food Lover.”
+
+12. Final result
+
+The final app should feel polished, modern, and useful.
+
+The user should be able to:
+- Open the app
+- See their spending summary
+- Add an expense
+- View charts
+- Understand where money goes
+- Receive behavior insights
+- Track budgets
+- See a monthly report
+
+The most important thing:
+This app should not only track expenses. It should explain the user’s money behavior in simple language.
+
+Build the best UI you think fits this concept. Make design decisions yourself. Prioritize clarity, beauty, and ease of use.

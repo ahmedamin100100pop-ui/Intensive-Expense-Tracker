@@ -1,0 +1,293 @@
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
+import React, { useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeInRight,
+  FadeOutLeft,
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import colors from "@/constants/colors";
+import type { Goal } from "@/context/AppContext";
+import { useApp } from "@/context/AppContext";
+import { useColors } from "@/hooks/useColors";
+
+const GOALS: { id: Goal; label: string; desc: string; icon: keyof typeof Feather.glyphMap }[] = [
+  { id: "understand", label: "Understand my spending", desc: "See where your money really goes", icon: "eye" },
+  { id: "save",       label: "Save more money",        desc: "Build healthy saving habits",     icon: "trending-up" },
+  { id: "reduce-food",label: "Reduce food expenses",   desc: "Cut back on dining and groceries",icon: "coffee" },
+  { id: "control-shopping", label: "Control shopping", desc: "Spend smarter on purchases",      icon: "shopping-bag" },
+  { id: "track-budget", label: "Track monthly budget", desc: "Stay within your spending limit", icon: "target" },
+];
+
+export default function OnboardingScreen() {
+  const col = useColors();
+  const insets = useSafeAreaInsets();
+  const { setUserProfile } = useApp();
+
+  const [step, setStep] = useState(0);
+  const [income, setIncome] = useState("");
+  const [budget, setBudget] = useState("");
+  const [goal, setGoal] = useState<Goal>("understand");
+
+  const handleNext = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (step < 2) {
+      setStep((s) => s + 1);
+    } else {
+      setUserProfile({
+        monthlyIncome: parseFloat(income) || 4500,
+        monthlyBudget: parseFloat(budget) || 2500,
+        savingsGoal: (parseFloat(income) || 4500) * 0.2,
+        selectedGoal: goal,
+        onboardingComplete: true,
+      });
+      router.replace("/(tabs)/");
+    }
+  };
+
+  const canProceed =
+    step === 0 ? income.length > 0 && parseFloat(income) > 0
+    : step === 1 ? budget.length > 0 && parseFloat(budget) > 0
+    : true;
+
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  return (
+    <View style={[styles.root, { backgroundColor: col.background }]}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingTop: topPad + 24, paddingBottom: insets.bottom + 40 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Progress */}
+          <Animated.View entering={FadeIn} style={styles.progress}>
+            {[0, 1, 2].map((i) => (
+              <View
+                key={i}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: i <= step ? col.primary : col.border,
+                    width: i === step ? 24 : 8,
+                  },
+                ]}
+              />
+            ))}
+          </Animated.View>
+
+          {step === 0 && (
+            <Animated.View entering={FadeInRight} key="step0">
+              <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
+                <Feather name="dollar-sign" size={32} color={col.primary} />
+              </View>
+              <Text style={[styles.heading, { color: col.foreground }]}>
+                What's your monthly income?
+              </Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>
+                We'll use this to help you plan your budget
+              </Text>
+              <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
+                <Text style={[styles.currency, { color: col.mutedForeground }]}>$</Text>
+                <TextInput
+                  style={[styles.input, { color: col.foreground }]}
+                  placeholder="4,500"
+                  placeholderTextColor={col.mutedForeground}
+                  keyboardType="numeric"
+                  value={income}
+                  onChangeText={setIncome}
+                  autoFocus
+                />
+              </View>
+            </Animated.View>
+          )}
+
+          {step === 1 && (
+            <Animated.View entering={FadeInRight} key="step1">
+              <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
+                <Feather name="target" size={32} color={col.primary} />
+              </View>
+              <Text style={[styles.heading, { color: col.foreground }]}>
+                Monthly spending limit?
+              </Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>
+                Set a budget to track whether you're on track
+              </Text>
+              <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
+                <Text style={[styles.currency, { color: col.mutedForeground }]}>$</Text>
+                <TextInput
+                  style={[styles.input, { color: col.foreground }]}
+                  placeholder="2,500"
+                  placeholderTextColor={col.mutedForeground}
+                  keyboardType="numeric"
+                  value={budget}
+                  onChangeText={setBudget}
+                  autoFocus
+                />
+              </View>
+              {income && budget && parseFloat(budget) > parseFloat(income) && (
+                <Text style={[styles.hint, { color: col.warning }]}>
+                  Budget is higher than income — are you sure?
+                </Text>
+              )}
+            </Animated.View>
+          )}
+
+          {step === 2 && (
+            <Animated.View entering={FadeInRight} key="step2">
+              <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
+                <Feather name="flag" size={32} color={col.primary} />
+              </View>
+              <Text style={[styles.heading, { color: col.foreground }]}>
+                What's your main goal?
+              </Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>
+                We'll tailor insights and tips for you
+              </Text>
+              <View style={styles.goals}>
+                {GOALS.map((g) => (
+                  <TouchableOpacity
+                    key={g.id}
+                    style={[
+                      styles.goalItem,
+                      {
+                        backgroundColor: goal === g.id ? col.secondary : col.card,
+                        borderColor: goal === g.id ? col.primary : col.border,
+                      },
+                    ]}
+                    onPress={() => {
+                      setGoal(g.id);
+                      Haptics.selectionAsync();
+                    }}
+                  >
+                    <View style={[styles.goalIcon, { backgroundColor: goal === g.id ? col.primary : col.muted }]}>
+                      <Feather name={g.icon} size={16} color={goal === g.id ? "#fff" : col.mutedForeground} />
+                    </View>
+                    <View style={styles.goalText}>
+                      <Text style={[styles.goalLabel, { color: col.foreground }]}>{g.label}</Text>
+                      <Text style={[styles.goalDesc, { color: col.mutedForeground }]}>{g.desc}</Text>
+                    </View>
+                    {goal === g.id && (
+                      <Feather name="check-circle" size={18} color={col.primary} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </Animated.View>
+          )}
+        </ScrollView>
+
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: insets.bottom + 16, paddingHorizontal: 24, backgroundColor: col.background },
+          ]}
+        >
+          {step > 0 && (
+            <TouchableOpacity
+              onPress={() => { Haptics.selectionAsync(); setStep((s) => s - 1); }}
+              style={[styles.backBtn, { borderColor: col.border }]}
+            >
+              <Feather name="arrow-left" size={20} color={col.foreground} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[
+              styles.nextBtn,
+              {
+                backgroundColor: canProceed ? col.primary : col.muted,
+                flex: 1,
+              },
+            ]}
+            onPress={handleNext}
+            disabled={!canProceed}
+          >
+            <Text style={[styles.nextText, { color: canProceed ? "#fff" : col.mutedForeground }]}>
+              {step === 2 ? "Get started" : "Continue"}
+            </Text>
+            <Feather name={step === 2 ? "check" : "arrow-right"} size={18} color={canProceed ? "#fff" : col.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  flex: { flex: 1 },
+  scroll: { paddingHorizontal: 24 },
+  progress: { flexDirection: "row", gap: 6, marginBottom: 40, alignItems: "center" },
+  dot: { height: 8, borderRadius: 4 },
+  iconBig: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+  },
+  heading: { fontSize: 26, fontWeight: "700", marginBottom: 8, letterSpacing: -0.5 },
+  subheading: { fontSize: 15, lineHeight: 22, marginBottom: 32 },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderRadius: colors.radius,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  currency: { fontSize: 22, fontWeight: "600", marginRight: 8 },
+  input: { flex: 1, fontSize: 24, fontWeight: "600" },
+  hint: { marginTop: 8, fontSize: 13 },
+  goals: { gap: 10 },
+  goalItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderWidth: 1.5,
+    borderRadius: colors.radius,
+    gap: 12,
+  },
+  goalIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  goalText: { flex: 1 },
+  goalLabel: { fontSize: 14, fontWeight: "600" },
+  goalDesc: { fontSize: 12, marginTop: 1 },
+  footer: {
+    flexDirection: "row",
+    gap: 12,
+    borderTopWidth: 0,
+    paddingTop: 12,
+  },
+  backBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nextBtn: {
+    height: 52,
+    borderRadius: 26,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  nextText: { fontSize: 16, fontWeight: "600" },
+});
