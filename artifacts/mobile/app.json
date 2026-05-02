@@ -21,7 +21,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
-      }
+      },
+      "package": "com.ahmedameen01.mobile"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -39,6 +40,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "432a82d6-e11c-424f-97d2-692a88f65a69"
+      }
     }
   }
 }
