@@ -37,6 +37,9 @@ export interface Expense {
   note: string;
   paymentMethod: PaymentMethod;
   createdAt: string;
+  isIncome?: boolean;
+  customLabel?: string;
+  customIcon?: string;
 }
 
 export interface UserProfile {
@@ -173,8 +176,8 @@ function computeSummary(
   const currKey = getCurrentMonthKey();
   const prevKey = getPreviousMonthKey();
 
-  const curr = expenses.filter((e) => e.date.startsWith(currKey));
-  const prev = expenses.filter((e) => e.date.startsWith(prevKey));
+  const curr = expenses.filter((e) => e.date.startsWith(currKey) && !e.isIncome);
+  const prev = expenses.filter((e) => e.date.startsWith(prevKey) && !e.isIncome);
 
   const totalCurrentMonth = curr.reduce((s, e) => s + e.amount, 0);
   const totalPreviousMonth = prev.reduce((s, e) => s + e.amount, 0);
@@ -345,12 +348,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const currentMonthExpenses = useMemo(
-    () => expenses.filter((e) => e.date.startsWith(getCurrentMonthKey())),
+    () => expenses.filter((e) => e.date.startsWith(getCurrentMonthKey()) && !e.isIncome),
     [expenses],
   );
 
   const previousMonthExpenses = useMemo(
-    () => expenses.filter((e) => e.date.startsWith(getPreviousMonthKey())),
+    () => expenses.filter((e) => e.date.startsWith(getPreviousMonthKey()) && !e.isIncome),
     [expenses],
   );
 
