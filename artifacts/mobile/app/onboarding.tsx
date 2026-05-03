@@ -17,15 +17,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import colors from "@/constants/colors";
 import type { Goal } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
-
-const GOALS: { id: Goal; label: string; desc: string; icon: keyof typeof Feather.glyphMap }[] = [
-  { id: "understand", label: "Understand my spending", desc: "See where your money really goes", icon: "eye" },
-  { id: "save",       label: "Save more money",        desc: "Build healthy saving habits",     icon: "trending-up" },
-  { id: "reduce-food",label: "Reduce food expenses",   desc: "Cut back on dining and groceries",icon: "coffee" },
-  { id: "control-shopping", label: "Control shopping", desc: "Spend smarter on purchases",      icon: "shopping-bag" },
-  { id: "track-budget", label: "Track monthly budget", desc: "Stay within your spending limit", icon: "target" },
-];
 
 const TOTAL_STEPS = 4;
 
@@ -33,12 +26,21 @@ export default function OnboardingScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
   const { setUserProfile } = useApp();
+  const { t } = useLanguage();
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [income, setIncome] = useState("");
   const [budget, setBudget] = useState("");
   const [goal, setGoal] = useState<Goal>("understand");
+
+  const GOALS: { id: Goal; labelKey: string; descKey: string; icon: keyof typeof Feather.glyphMap }[] = [
+    { id: "understand", labelKey: "goalUnderstand", descKey: "goalUnderstandDesc", icon: "eye" },
+    { id: "save",       labelKey: "goalSave",       descKey: "goalSaveDesc",       icon: "trending-up" },
+    { id: "reduce-food",labelKey: "goalReduceFood", descKey: "goalReduceFoodDesc", icon: "coffee" },
+    { id: "control-shopping", labelKey: "goalControlShopping", descKey: "goalControlShoppingDesc", icon: "shopping-bag" },
+    { id: "track-budget", labelKey: "goalTrackBudget", descKey: "goalTrackBudgetDesc", icon: "target" },
+  ];
 
   const handleNext = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -53,7 +55,7 @@ export default function OnboardingScreen() {
         selectedGoal: goal,
         onboardingComplete: true,
       });
-      router.replace("/(tabs)/");
+      router.replace("/" as any);
     }
   };
 
@@ -94,16 +96,12 @@ export default function OnboardingScreen() {
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
                 <Feather name="user" size={32} color={col.primary} />
               </View>
-              <Text style={[styles.heading, { color: col.foreground }]}>
-                What's your name?
-              </Text>
-              <Text style={[styles.subheading, { color: col.mutedForeground }]}>
-                Your reports will be personalized with your name
-              </Text>
+              <Text style={[styles.heading, { color: col.foreground }]}>{t("whatsYourName")}</Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("reportsPersonalized")}</Text>
               <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
                 <TextInput
                   style={[styles.input, { color: col.foreground }]}
-                  placeholder="Your name"
+                  placeholder={t("yourName")}
                   placeholderTextColor={col.mutedForeground}
                   value={name}
                   onChangeText={setName}
@@ -119,12 +117,8 @@ export default function OnboardingScreen() {
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
                 <Feather name="dollar-sign" size={32} color={col.primary} />
               </View>
-              <Text style={[styles.heading, { color: col.foreground }]}>
-                What's your monthly income?
-              </Text>
-              <Text style={[styles.subheading, { color: col.mutedForeground }]}>
-                We'll use this to help you plan your budget
-              </Text>
+              <Text style={[styles.heading, { color: col.foreground }]}>{t("whatsYourIncome")}</Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("helpPlanBudget")}</Text>
               <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
                 <Text style={[styles.currency, { color: col.mutedForeground }]}>$</Text>
                 <TextInput
@@ -145,12 +139,8 @@ export default function OnboardingScreen() {
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
                 <Feather name="target" size={32} color={col.primary} />
               </View>
-              <Text style={[styles.heading, { color: col.foreground }]}>
-                Monthly spending limit?
-              </Text>
-              <Text style={[styles.subheading, { color: col.mutedForeground }]}>
-                Set a budget to track whether you're on track
-              </Text>
+              <Text style={[styles.heading, { color: col.foreground }]}>{t("monthlyLimit")}</Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("setABudget")}</Text>
               <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
                 <Text style={[styles.currency, { color: col.mutedForeground }]}>$</Text>
                 <TextInput
@@ -164,9 +154,7 @@ export default function OnboardingScreen() {
                 />
               </View>
               {income && budget && parseFloat(budget) > parseFloat(income) && (
-                <Text style={[styles.hint, { color: col.warning }]}>
-                  Budget is higher than income — are you sure?
-                </Text>
+                <Text style={[styles.hint, { color: col.warning }]}>{t("budgetHigherThanIncome")}</Text>
               )}
             </View>
           )}
@@ -176,12 +164,8 @@ export default function OnboardingScreen() {
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
                 <Feather name="flag" size={32} color={col.primary} />
               </View>
-              <Text style={[styles.heading, { color: col.foreground }]}>
-                What's your main goal?
-              </Text>
-              <Text style={[styles.subheading, { color: col.mutedForeground }]}>
-                We'll tailor insights and tips for you
-              </Text>
+              <Text style={[styles.heading, { color: col.foreground }]}>{t("whatsYourGoal")}</Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("tailorInsights")}</Text>
               <View style={styles.goals}>
                 {GOALS.map((g) => (
                   <TouchableOpacity
@@ -193,21 +177,16 @@ export default function OnboardingScreen() {
                         borderColor: goal === g.id ? col.primary : col.border,
                       },
                     ]}
-                    onPress={() => {
-                      setGoal(g.id);
-                      Haptics.selectionAsync();
-                    }}
+                    onPress={() => { setGoal(g.id); Haptics.selectionAsync(); }}
                   >
                     <View style={[styles.goalIcon, { backgroundColor: goal === g.id ? col.primary : col.muted }]}>
                       <Feather name={g.icon} size={16} color={goal === g.id ? "#fff" : col.mutedForeground} />
                     </View>
                     <View style={styles.goalText}>
-                      <Text style={[styles.goalLabel, { color: col.foreground }]}>{g.label}</Text>
-                      <Text style={[styles.goalDesc, { color: col.mutedForeground }]}>{g.desc}</Text>
+                      <Text style={[styles.goalLabel, { color: col.foreground }]}>{t(g.labelKey as any)}</Text>
+                      <Text style={[styles.goalDesc, { color: col.mutedForeground }]}>{t(g.descKey as any)}</Text>
                     </View>
-                    {goal === g.id && (
-                      <Feather name="check-circle" size={18} color={col.primary} />
-                    )}
+                    {goal === g.id && <Feather name="check-circle" size={18} color={col.primary} />}
                   </TouchableOpacity>
                 ))}
               </View>
@@ -215,12 +194,7 @@ export default function OnboardingScreen() {
           )}
         </ScrollView>
 
-        <View
-          style={[
-            styles.footer,
-            { paddingBottom: insets.bottom + 16, paddingHorizontal: 24, backgroundColor: col.background },
-          ]}
-        >
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 16, paddingHorizontal: 24, backgroundColor: col.background }]}>
           {step > 0 && (
             <TouchableOpacity
               onPress={() => { Haptics.selectionAsync(); setStep((s) => s - 1); }}
@@ -230,15 +204,12 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={[
-              styles.nextBtn,
-              { backgroundColor: canProceed ? col.primary : col.muted, flex: 1 },
-            ]}
+            style={[styles.nextBtn, { backgroundColor: canProceed ? col.primary : col.muted, flex: 1 }]}
             onPress={handleNext}
             disabled={!canProceed}
           >
             <Text style={[styles.nextText, { color: canProceed ? "#fff" : col.mutedForeground }]}>
-              {step === TOTAL_STEPS - 1 ? "Get started" : "Continue"}
+              {step === TOTAL_STEPS - 1 ? t("getStarted") : t("continue")}
             </Text>
             <Feather name={step === TOTAL_STEPS - 1 ? "check" : "arrow-right"} size={18} color={canProceed ? "#fff" : col.mutedForeground} />
           </TouchableOpacity>
@@ -254,37 +225,21 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 24 },
   progress: { flexDirection: "row", gap: 6, marginBottom: 40, alignItems: "center" },
   dot: { height: 8, borderRadius: 4 },
-  iconBig: {
-    width: 72, height: 72, borderRadius: 36,
-    alignItems: "center", justifyContent: "center", marginBottom: 24,
-  },
+  iconBig: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 24 },
   heading: { fontSize: 26, fontWeight: "700", marginBottom: 8, letterSpacing: -0.5 },
   subheading: { fontSize: 15, lineHeight: 22, marginBottom: 32 },
-  inputRow: {
-    flexDirection: "row", alignItems: "center",
-    borderWidth: 1.5, borderRadius: colors.radius,
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
+  inputRow: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: colors.radius, paddingHorizontal: 16, paddingVertical: 14 },
   currency: { fontSize: 22, fontWeight: "600", marginRight: 8 },
   input: { flex: 1, fontSize: 24, fontWeight: "600" },
   hint: { marginTop: 8, fontSize: 13 },
   goals: { gap: 10 },
-  goalItem: {
-    flexDirection: "row", alignItems: "center",
-    padding: 14, borderWidth: 1.5, borderRadius: colors.radius, gap: 12,
-  },
+  goalItem: { flexDirection: "row", alignItems: "center", padding: 14, borderWidth: 1.5, borderRadius: colors.radius, gap: 12 },
   goalIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   goalText: { flex: 1 },
   goalLabel: { fontSize: 14, fontWeight: "600" },
   goalDesc: { fontSize: 12, marginTop: 1 },
   footer: { flexDirection: "row", gap: 12, paddingTop: 12 },
-  backBtn: {
-    width: 52, height: 52, borderRadius: 26,
-    borderWidth: 1.5, alignItems: "center", justifyContent: "center",
-  },
-  nextBtn: {
-    height: 52, borderRadius: 26,
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-  },
+  backBtn: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, alignItems: "center", justifyContent: "center" },
+  nextBtn: { height: 52, borderRadius: 26, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   nextText: { fontSize: 16, fontWeight: "600" },
 });

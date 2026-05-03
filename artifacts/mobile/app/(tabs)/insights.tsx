@@ -1,11 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { InsightCard } from "@/components/InsightCard";
@@ -13,6 +7,7 @@ import type { InsightType } from "@/components/InsightCard";
 import { getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 
 interface Insight {
@@ -26,6 +21,7 @@ export default function InsightsScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
   const { summary, userProfile, categoryBudgets } = useApp();
+  const { t, language } = useLanguage();
 
   const insights = useMemo<Insight[]>(() => {
     if (!summary) return [];
@@ -33,10 +29,14 @@ export default function InsightsScreen() {
 
     // Top category
     if (summary.topCategory) {
+      const catLabel = getCategoryLabel(summary.topCategory, language);
       list.push({
         id: "top_cat",
-        title: `${getCategoryLabel(summary.topCategory)} is your top category`,
-        description: `You've spent $${summary.categoryTotals[summary.topCategory].toFixed(0)} on ${getCategoryLabel(summary.topCategory).toLowerCase()} this month — more than any other category.`,
+        title: t("insightTopCatTitle", { category: catLabel }),
+        description: t("insightTopCatDesc", {
+          amount: summary.categoryTotals[summary.topCategory].toFixed(0),
+          category: catLabel,
+        }),
         type: "info",
       });
     }
@@ -47,11 +47,11 @@ export default function InsightsScreen() {
       list.push({
         id: "mom",
         title: more
-          ? `Spending up ${summary.percentChange.toFixed(0)}% this month`
-          : `Spending down ${Math.abs(summary.percentChange).toFixed(0)}% vs last month`,
+          ? t("insightSpendingUpTitle", { pct: summary.percentChange.toFixed(0) })
+          : t("insightSpendingDownTitle", { pct: Math.abs(summary.percentChange).toFixed(0) }),
         description: more
-          ? `You've spent $${summary.totalCurrentMonth.toFixed(0)} so far versus $${summary.totalPreviousMonth.toFixed(0)} last month. Keep an eye on it.`
-          : `Great news — you're spending less than last month. You spent $${summary.totalCurrentMonth.toFixed(0)} vs $${summary.totalPreviousMonth.toFixed(0)} last month.`,
+          ? t("insightSpendingUpDesc", { curr: summary.totalCurrentMonth.toFixed(0), prev: summary.totalPreviousMonth.toFixed(0) })
+          : t("insightSpendingDownDesc", { curr: summary.totalCurrentMonth.toFixed(0), prev: summary.totalPreviousMonth.toFixed(0) }),
         type: more ? "warning" : "success",
       });
     }
@@ -62,8 +62,11 @@ export default function InsightsScreen() {
       if (ratio > 1.4) {
         list.push({
           id: "weekend",
-          title: "You spend more on weekends",
-          description: `Your weekend spending is $${summary.weekendTotal.toFixed(0)} vs $${summary.weekdayTotal.toFixed(0)} on weekdays (normalized). Most of your discretionary spending happens on weekends.`,
+          title: t("insightWeekendTitle"),
+          description: t("insightWeekendDesc", {
+            weekend: summary.weekendTotal.toFixed(0),
+            weekday: summary.weekdayTotal.toFixed(0),
+          }),
           type: "tip",
         });
       }
@@ -73,18 +76,29 @@ export default function InsightsScreen() {
     if (summary.smallPurchasesPercent > 15) {
       list.push({
         id: "small",
-        title: "Small purchases are adding up",
-        description: `Purchases under $10 totalled $${summary.smallPurchasesTotal.toFixed(0)} — ${summary.smallPurchasesPercent.toFixed(0)}% of your spending. These often go unnoticed.`,
+        title: t("insightSmallTitle"),
+        description: t("insightSmallDesc", {
+          total: summary.smallPurchasesTotal.toFixed(0),
+          pct: summary.smallPurchasesPercent.toFixed(0),
+        }),
         type: "tip",
       });
     }
 
     // Unusual expenses
     if (summary.unusualExpenses.length > 0) {
+      const count = summary.unusualExpenses.length;
+      const items = summary.unusualExpenses
+        .map((e) => `$${e.amount.toFixed(0)} (${getCategoryLabel(e.category, language)})`)
+        .slice(0, 3)
+        .join(", ");
       list.push({
         id: "unusual",
-        title: `${summary.unusualExpenses.length} unusually large expense${summary.unusualExpenses.length > 1 ? "s" : ""}`,
-        description: `You had ${summary.unusualExpenses.length > 1 ? "several expenses" : "an expense"} significantly higher than your average: ${summary.unusualExpenses.map((e) => `$${e.amount.toFixed(0)} (${getCategoryLabel(e.category)})`).slice(0, 3).join(", ")}.`,
+        title: count === 1 ? t("insightUnusualTitle") : t("insightUnusualTitlePlural", { count }),
+        description: t("insightUnusualDesc", {
+          desc: count === 1 ? t("insightUnusualDescOne") : t("insightUnusualDescMany"),
+          items,
+        }),
         type: "warning",
       });
     }
@@ -95,22 +109,32 @@ export default function InsightsScreen() {
       if (budgetPct > 1) {
         list.push({
           id: "over_budget",
-          title: "You've exceeded your monthly budget",
-          description: `Your spending of $${summary.totalCurrentMonth.toFixed(0)} has gone over your $${userProfile.monthlyBudget.toFixed(0)} budget by $${(summary.totalCurrentMonth - userProfile.monthlyBudget).toFixed(0)}.`,
+          title: t("insightOverBudgetTitle"),
+          description: t("insightOverBudgetDesc", {
+            spent: summary.totalCurrentMonth.toFixed(0),
+            budget: userProfile.monthlyBudget.toFixed(0),
+            over: (summary.totalCurrentMonth - userProfile.monthlyBudget).toFixed(0),
+          }),
           type: "warning",
         });
       } else if (budgetPct > 0.8) {
         list.push({
           id: "near_budget",
-          title: "Approaching your monthly budget",
-          description: `You've used ${(budgetPct * 100).toFixed(0)}% of your monthly budget. Only $${(userProfile.monthlyBudget - summary.totalCurrentMonth).toFixed(0)} left.`,
+          title: t("insightNearBudgetTitle"),
+          description: t("insightNearBudgetDesc", {
+            pct: (budgetPct * 100).toFixed(0),
+            left: (userProfile.monthlyBudget - summary.totalCurrentMonth).toFixed(0),
+          }),
           type: "warning",
         });
       } else if (budgetPct < 0.5 && new Date().getDate() >= 15) {
         list.push({
           id: "on_track",
-          title: "You're doing well this month",
-          description: `You've spent $${summary.totalCurrentMonth.toFixed(0)} of your $${userProfile.monthlyBudget.toFixed(0)} budget halfway through the month. Keep it up.`,
+          title: t("insightOnTrackTitle"),
+          description: t("insightOnTrackDesc", {
+            spent: summary.totalCurrentMonth.toFixed(0),
+            budget: userProfile.monthlyBudget.toFixed(0),
+          }),
           type: "success",
         });
       }
@@ -120,18 +144,28 @@ export default function InsightsScreen() {
     categoryBudgets.forEach((cb) => {
       const spent = summary.categoryTotals[cb.category] ?? 0;
       const pct = spent / cb.budgetAmount;
+      const catLabel = getCategoryLabel(cb.category, language);
       if (pct > 1) {
         list.push({
           id: `cat_over_${cb.category}`,
-          title: `${getCategoryLabel(cb.category)} budget exceeded`,
-          description: `You've spent $${spent.toFixed(0)} on ${getCategoryLabel(cb.category).toLowerCase()}, which is $${(spent - cb.budgetAmount).toFixed(0)} over your $${cb.budgetAmount.toFixed(0)} limit.`,
+          title: t("insightCatOverTitle", { category: catLabel }),
+          description: t("insightCatOverDesc", {
+            spent: spent.toFixed(0),
+            category: catLabel,
+            over: (spent - cb.budgetAmount).toFixed(0),
+            limit: cb.budgetAmount.toFixed(0),
+          }),
           type: "warning",
         });
       } else if (pct > 0.8) {
         list.push({
           id: `cat_warn_${cb.category}`,
-          title: `${getCategoryLabel(cb.category)} is at ${(pct * 100).toFixed(0)}% of budget`,
-          description: `You've spent $${spent.toFixed(0)} of your $${cb.budgetAmount.toFixed(0)} ${getCategoryLabel(cb.category).toLowerCase()} budget.`,
+          title: t("insightCatWarnTitle", { category: catLabel, pct: (pct * 100).toFixed(0) }),
+          description: t("insightCatWarnDesc", {
+            spent: spent.toFixed(0),
+            limit: cb.budgetAmount.toFixed(0),
+            category: catLabel.toLowerCase(),
+          }),
           type: "tip",
         });
       }
@@ -139,16 +173,19 @@ export default function InsightsScreen() {
 
     // Average daily
     if (summary.averageDaily > 0) {
+      const projected = summary.averageDaily * 30;
+      const overBudget = projected > (userProfile?.monthlyBudget ?? Infinity);
       list.push({
         id: "daily_avg",
-        title: `Spending $${summary.averageDaily.toFixed(0)} per day on average`,
-        description: `At this pace, you'll spend roughly $${(summary.averageDaily * 30).toFixed(0)} this month. ${summary.averageDaily * 30 > (userProfile?.monthlyBudget ?? Infinity) ? "This exceeds your monthly budget." : "That's within your budget."}`,
+        title: t("insightDailyTitle", { avg: summary.averageDaily.toFixed(0) }),
+        description: (overBudget ? t("insightDailyDescOver") : t("insightDailyDescOk"))
+          .replace("{projected}", projected.toFixed(0)),
         type: "info",
       });
     }
 
     return list;
-  }, [summary, userProfile, categoryBudgets]);
+  }, [summary, userProfile, categoryBudgets, t, language]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
@@ -159,15 +196,13 @@ export default function InsightsScreen() {
         contentContainerStyle={[styles.scroll, { paddingTop: topPad + 16, paddingBottom: botPad + 90 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.heading, { color: col.foreground }]}>Insights</Text>
-        <Text style={[styles.subheading, { color: col.mutedForeground }]}>
-          Behavior-based analysis of your spending
-        </Text>
+        <Text style={[styles.heading, { color: col.foreground }]}>{t("insights")}</Text>
+        <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("behaviorAnalysis")}</Text>
 
         {insights.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-            <Text style={[styles.emptyText, { color: col.mutedForeground }]}>No insights yet</Text>
-            <Text style={[styles.emptySub, { color: col.mutedForeground }]}>Add some expenses to get started</Text>
+            <Text style={[styles.emptyText, { color: col.mutedForeground }]}>{t("noInsightsYet")}</Text>
+            <Text style={[styles.emptySub, { color: col.mutedForeground }]}>{t("addExpensesToStart")}</Text>
           </View>
         ) : (
           insights.map((ins, i) => (

@@ -17,76 +17,15 @@ import Animated, { ZoomIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
+import { getCategoryLabelForLang } from "@/constants/translations";
 import type { Category, PaymentMethod } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const GRID_COLS = 4;
 const TILE = (SCREEN_W - 32 - (GRID_COLS - 1) * 8) / GRID_COLS;
-
-// ── Expense categories ────────────────────────────────────────────────────────
-const EXP_CATS: { id: Category; label: string; icon: string; color: string }[] = [
-  { id: "food",          label: "Food",          icon: "food-fork-drink",      color: "#F97316" },
-  { id: "transport",     label: "Transport",      icon: "car-outline",          color: "#3B82F6" },
-  { id: "shopping",      label: "Shopping",       icon: "shopping-outline",     color: "#EC4899" },
-  { id: "rent",          label: "Rent",           icon: "home-outline",         color: "#6366F1" },
-  { id: "bills",         label: "Bills",          icon: "lightning-bolt",       color: "#EAB308" },
-  { id: "health",        label: "Health",         icon: "heart-pulse",          color: "#EF4444" },
-  { id: "entertainment", label: "Fun",            icon: "movie-open-outline",   color: "#8B5CF6" },
-  { id: "education",     label: "Education",      icon: "book-open-outline",    color: "#14B8A6" },
-  { id: "travel",        label: "Travel",         icon: "airplane",             color: "#06B6D4" },
-  { id: "family",        label: "Family",         icon: "account-group",        color: "#10B981" },
-  { id: "other",         label: "Other",          icon: "dots-horizontal",      color: "#6B7280" },
-];
-
-// ── Income categories ─────────────────────────────────────────────────────────
-const INC_CATS: { id: string; label: string; icon: string; color: string }[] = [
-  { id: "salary",     label: "Salary",     icon: "briefcase-outline",   color: "#10B981" },
-  { id: "freelance",  label: "Freelance",  icon: "laptop",              color: "#3B82F6" },
-  { id: "bonus",      label: "Bonus",      icon: "star-outline",        color: "#F59E0B" },
-  { id: "gift",       label: "Gift",       icon: "gift-outline",        color: "#EC4899" },
-  { id: "investment", label: "Investment", icon: "trending-up",         color: "#6366F1" },
-  { id: "business",   label: "Business",   icon: "store-outline",       color: "#14B8A6" },
-  { id: "rental",     label: "Rental",     icon: "key-outline",         color: "#8B5CF6" },
-  { id: "refund",     label: "Refund",     icon: "refresh",             color: "#06B6D4" },
-  { id: "other",      label: "Other",      icon: "dots-horizontal",     color: "#6B7280" },
-];
-
-// ── Icon options for "Other" custom type ─────────────────────────────────────
-const CUSTOM_ICONS: { icon: string; label: string }[] = [
-  { icon: "music",                  label: "Music"     },
-  { icon: "gamepad-variant-outline",label: "Gaming"    },
-  { icon: "dumbbell",               label: "Gym"       },
-  { icon: "dog-outline",            label: "Pet"       },
-  { icon: "baby-carriage",          label: "Baby"      },
-  { icon: "glass-cocktail",         label: "Drinks"    },
-  { icon: "pill",                   label: "Medicine"  },
-  { icon: "meditation",             label: "Wellness"  },
-  { icon: "bicycle-outline",        label: "Bike"      },
-  { icon: "tools",                  label: "Tools"     },
-  { icon: "laptop",                 label: "Tech"      },
-  { icon: "phone-outline",          label: "Phone"     },
-  { icon: "television-outline",     label: "TV"        },
-  { icon: "sofa-outline",           label: "Furniture" },
-  { icon: "flower-outline",         label: "Garden"    },
-  { icon: "umbrella-outline",       label: "Insurance" },
-  { icon: "gift-outline",           label: "Gift"      },
-  { icon: "fire",                   label: "Energy"    },
-  { icon: "coffee-outline",         label: "Coffee"    },
-  { icon: "camera-outline",         label: "Camera"    },
-  { icon: "headphones",             label: "Audio"     },
-  { icon: "palette-outline",        label: "Art"       },
-  { icon: "car-wash",               label: "Car care"  },
-  { icon: "printer-outline",        label: "Print"     },
-];
-
-const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: string }[] = [
-  { id: "cash",   label: "Cash",   icon: "cash" },
-  { id: "card",   label: "Card",   icon: "credit-card-outline" },
-  { id: "bank",   label: "Bank",   icon: "bank-outline" },
-  { id: "wallet", label: "Wallet", icon: "wallet-outline" },
-];
 
 function todayStr() { return new Date().toISOString().split("T")[0]; }
 
@@ -94,6 +33,7 @@ export default function AddScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
   const { addExpense } = useApp();
+  const { t, language } = useLanguage();
 
   type TxType = "expense" | "income";
   const [txType, setTxType] = useState<TxType>("expense");
@@ -105,16 +45,75 @@ export default function AddScreen() {
   const [date, setDate] = useState(todayStr());
   const [saved, setSaved] = useState(false);
 
-  // Custom "other" fields
   const [customLabel, setCustomLabel] = useState("");
   const [customIcon, setCustomIcon] = useState("dots-horizontal");
+
+  // ── Expense categories ────────────────────────────────────────────────────────
+  const EXP_CATS: { id: Category; label: string; icon: string; color: string }[] = [
+    { id: "food",          label: getCategoryLabelForLang("food", language),          icon: "food-fork-drink",      color: "#F97316" },
+    { id: "transport",     label: getCategoryLabelForLang("transport", language),     icon: "car-outline",          color: "#3B82F6" },
+    { id: "shopping",      label: getCategoryLabelForLang("shopping", language),      icon: "shopping-outline",     color: "#EC4899" },
+    { id: "rent",          label: getCategoryLabelForLang("rent", language),          icon: "home-outline",         color: "#6366F1" },
+    { id: "bills",         label: getCategoryLabelForLang("bills", language),         icon: "lightning-bolt",       color: "#EAB308" },
+    { id: "health",        label: getCategoryLabelForLang("health", language),        icon: "heart-pulse",          color: "#EF4444" },
+    { id: "entertainment", label: getCategoryLabelForLang("entertainment", language), icon: "movie-open-outline",   color: "#8B5CF6" },
+    { id: "education",     label: getCategoryLabelForLang("education", language),     icon: "book-open-outline",    color: "#14B8A6" },
+    { id: "travel",        label: getCategoryLabelForLang("travel", language),        icon: "airplane",             color: "#06B6D4" },
+    { id: "family",        label: getCategoryLabelForLang("family", language),        icon: "account-group",        color: "#10B981" },
+    { id: "other",         label: getCategoryLabelForLang("other", language),         icon: "dots-horizontal",      color: "#6B7280" },
+  ];
+
+  // ── Income categories ─────────────────────────────────────────────────────────
+  const INC_CATS: { id: string; label: string; icon: string; color: string }[] = [
+    { id: "salary",     label: getCategoryLabelForLang("salary", language),     icon: "briefcase-outline",   color: "#10B981" },
+    { id: "freelance",  label: getCategoryLabelForLang("freelance", language),  icon: "laptop",              color: "#3B82F6" },
+    { id: "bonus",      label: getCategoryLabelForLang("bonus", language),      icon: "star-outline",        color: "#F59E0B" },
+    { id: "gift",       label: getCategoryLabelForLang("gift", language),       icon: "gift-outline",        color: "#EC4899" },
+    { id: "investment", label: getCategoryLabelForLang("investment", language), icon: "trending-up",         color: "#6366F1" },
+    { id: "business",   label: getCategoryLabelForLang("business", language),   icon: "store-outline",       color: "#14B8A6" },
+    { id: "rental",     label: getCategoryLabelForLang("rental", language),     icon: "key-outline",         color: "#8B5CF6" },
+    { id: "refund",     label: getCategoryLabelForLang("refund", language),     icon: "refresh",             color: "#06B6D4" },
+    { id: "other",      label: getCategoryLabelForLang("other", language),      icon: "dots-horizontal",     color: "#6B7280" },
+  ];
+
+  const CUSTOM_ICONS: { icon: string; label: string }[] = [
+    { icon: "music",                   label: "Music" },
+    { icon: "gamepad-variant-outline", label: "Gaming" },
+    { icon: "dumbbell",                label: "Gym" },
+    { icon: "dog-outline",             label: "Pet" },
+    { icon: "baby-carriage",           label: "Baby" },
+    { icon: "glass-cocktail",          label: "Drinks" },
+    { icon: "pill",                    label: "Medicine" },
+    { icon: "meditation",              label: "Wellness" },
+    { icon: "bicycle-outline",         label: "Bike" },
+    { icon: "tools",                   label: "Tools" },
+    { icon: "laptop",                  label: "Tech" },
+    { icon: "phone-outline",           label: "Phone" },
+    { icon: "television-outline",      label: "TV" },
+    { icon: "sofa-outline",            label: "Furniture" },
+    { icon: "flower-outline",          label: "Garden" },
+    { icon: "umbrella-outline",        label: "Insurance" },
+    { icon: "gift-outline",            label: "Gift" },
+    { icon: "fire",                    label: "Energy" },
+    { icon: "coffee-outline",          label: "Coffee" },
+    { icon: "camera-outline",          label: "Camera" },
+    { icon: "headphones",              label: "Audio" },
+    { icon: "palette-outline",         label: "Art" },
+    { icon: "car-wash",                label: "Car care" },
+    { icon: "printer-outline",         label: "Print" },
+  ];
+
+  const PAYMENT_METHODS: { id: PaymentMethod; label: string; icon: string }[] = [
+    { id: "cash",   label: t("cash"),   icon: "cash" },
+    { id: "card",   label: t("card"),   icon: "credit-card-outline" },
+    { id: "bank",   label: t("bank"),   icon: "bank-outline" },
+    { id: "wallet", label: t("wallet"), icon: "wallet-outline" },
+  ];
 
   const isOtherExpense = txType === "expense" && expCat === "other";
   const isOtherIncome = txType === "income" && incCatId === "other";
   const showCustom = isOtherExpense || isOtherIncome;
-
   const canSave = amount.length > 0 && parseFloat(amount) > 0;
-
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -155,7 +154,7 @@ export default function AddScreen() {
       setDate(todayStr());
       setCustomLabel("");
       setCustomIcon("dots-horizontal");
-      router.push("/(tabs)/");
+      router.push("/" as any);
     }, 700);
   };
 
@@ -169,42 +168,38 @@ export default function AddScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header */}
-          <Text style={[styles.heading, { color: col.foreground }]}>Add Transaction</Text>
+          <Text style={[styles.heading, { color: col.foreground }]}>{t("addTransaction")}</Text>
 
           {/* Type toggle */}
           <View style={[styles.typeToggle, { backgroundColor: col.card, borderColor: col.border }]}>
-            {(["expense", "income"] as TxType[]).map((t) => (
+            {(["expense", "income"] as TxType[]).map((tx) => (
               <TouchableOpacity
-                key={t}
+                key={tx}
                 style={[
                   styles.typeBtn,
-                  txType === t && {
-                    backgroundColor: t === "income" ? "#10B981" : col.primary,
-                    shadowColor: t === "income" ? "#10B981" : col.primary,
+                  txType === tx && {
+                    backgroundColor: tx === "income" ? "#10B981" : col.primary,
+                    shadowColor: tx === "income" ? "#10B981" : col.primary,
                     shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3,
                   },
                 ]}
-                onPress={() => { setTxType(t); Haptics.selectionAsync(); }}
+                onPress={() => { setTxType(tx); Haptics.selectionAsync(); }}
               >
                 <MaterialCommunityIcons
-                  name={t === "income" ? "arrow-down-circle-outline" : "arrow-up-circle-outline"}
+                  name={tx === "income" ? "arrow-down-circle-outline" : "arrow-up-circle-outline"}
                   size={16}
-                  color={txType === t ? "#fff" : col.mutedForeground}
+                  color={txType === tx ? "#fff" : col.mutedForeground}
                 />
-                <Text style={[styles.typeBtnText, { color: txType === t ? "#fff" : col.mutedForeground }]}>
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                <Text style={[styles.typeBtnText, { color: txType === tx ? "#fff" : col.mutedForeground }]}>
+                  {tx === "income" ? t("income") : t("expense")}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Amount card */}
-          <View style={[
-            styles.amountCard,
-            { backgroundColor: isIncome ? "#10B981" : col.primary, borderRadius: colors.radius + 4 },
-          ]}>
-            <Text style={styles.amountLabel}>{isIncome ? "Amount received" : "Amount spent"}</Text>
+          <View style={[styles.amountCard, { backgroundColor: isIncome ? "#10B981" : col.primary, borderRadius: colors.radius + 4 }]}>
+            <Text style={styles.amountLabel}>{isIncome ? t("amountReceived") : t("amountSpent")}</Text>
             <View style={styles.amountRow}>
               <Text style={styles.amountSymbol}>$</Text>
               <TextInput
@@ -221,7 +216,7 @@ export default function AddScreen() {
 
           {/* Category grid */}
           <Text style={[styles.sectionLabel, { color: col.foreground }]}>
-            {isIncome ? "Income type" : "Category"}
+            {isIncome ? t("incomeType") : t("category")}
           </Text>
           <View style={styles.grid}>
             {(isIncome ? INC_CATS : EXP_CATS).map((c) => {
@@ -231,12 +226,7 @@ export default function AddScreen() {
                   key={c.id}
                   style={[
                     styles.tile,
-                    {
-                      width: TILE, height: TILE,
-                      backgroundColor: active ? c.color : col.card,
-                      borderColor: active ? c.color : col.border,
-                      borderRadius: colors.radius,
-                    },
+                    { width: TILE, height: TILE, backgroundColor: active ? c.color : col.card, borderColor: active ? c.color : col.border, borderRadius: colors.radius },
                   ]}
                   onPress={() => {
                     Haptics.selectionAsync();
@@ -260,36 +250,26 @@ export default function AddScreen() {
           {/* Custom "Other" section */}
           {showCustom && (
             <View style={[styles.customBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-              <Text style={[styles.customTitle, { color: col.foreground }]}>Custom type name</Text>
+              <Text style={[styles.customTitle, { color: col.foreground }]}>{t("customTypeName")}</Text>
               <TextInput
                 style={[styles.customInput, { color: col.foreground, borderColor: col.border, borderRadius: 10 }]}
-                placeholder="e.g. Pet expenses, Hobbies…"
+                placeholder={t("customTypePlaceholder")}
                 placeholderTextColor={col.mutedForeground}
                 value={customLabel}
                 onChangeText={setCustomLabel}
               />
-              <Text style={[styles.customTitle, { color: col.foreground, marginTop: 12 }]}>Choose an icon</Text>
+              <Text style={[styles.customTitle, { color: col.foreground, marginTop: 12 }]}>{t("chooseAnIcon")}</Text>
               <View style={styles.iconGrid}>
                 {CUSTOM_ICONS.map((ci) => {
                   const active = customIcon === ci.icon;
                   return (
                     <TouchableOpacity
                       key={ci.icon}
-                      style={[
-                        styles.iconTile,
-                        { backgroundColor: active ? col.primary : col.muted, borderRadius: 10,
-                          borderWidth: active ? 2 : 0, borderColor: active ? col.primary : "transparent" },
-                      ]}
+                      style={[styles.iconTile, { backgroundColor: active ? col.primary : col.muted, borderRadius: 10, borderWidth: active ? 2 : 0, borderColor: active ? col.primary : "transparent" }]}
                       onPress={() => { setCustomIcon(ci.icon); Haptics.selectionAsync(); }}
                     >
-                      <MaterialCommunityIcons
-                        name={ci.icon as keyof typeof MaterialCommunityIcons.glyphMap}
-                        size={20}
-                        color={active ? "#fff" : col.mutedForeground}
-                      />
-                      <Text style={[styles.iconTileLabel, { color: active ? "#fff" : col.mutedForeground }]} numberOfLines={1}>
-                        {ci.label}
-                      </Text>
+                      <MaterialCommunityIcons name={ci.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={20} color={active ? "#fff" : col.mutedForeground} />
+                      <Text style={[styles.iconTileLabel, { color: active ? "#fff" : col.mutedForeground }]} numberOfLines={1}>{ci.label}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -298,24 +278,17 @@ export default function AddScreen() {
           )}
 
           {/* Payment method */}
-          <Text style={[styles.sectionLabel, { color: col.foreground }]}>Payment method</Text>
+          <Text style={[styles.sectionLabel, { color: col.foreground }]}>{t("paymentMethod")}</Text>
           <View style={styles.payRow}>
             {PAYMENT_METHODS.map((p) => {
               const active = paymentMethod === p.id;
               return (
                 <TouchableOpacity
                   key={p.id}
-                  style={[
-                    styles.payChip,
-                    { flex: 1, backgroundColor: active ? col.secondary : col.card, borderColor: active ? col.primary : col.border },
-                  ]}
+                  style={[styles.payChip, { flex: 1, backgroundColor: active ? col.secondary : col.card, borderColor: active ? col.primary : col.border }]}
                   onPress={() => { setPaymentMethod(p.id); Haptics.selectionAsync(); }}
                 >
-                  <MaterialCommunityIcons
-                    name={p.icon as keyof typeof MaterialCommunityIcons.glyphMap}
-                    size={15}
-                    color={active ? col.primary : col.mutedForeground}
-                  />
+                  <MaterialCommunityIcons name={p.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={15} color={active ? col.primary : col.mutedForeground} />
                   <Text style={[styles.payLabel, { color: active ? col.primary : col.foreground }]}>{p.label}</Text>
                 </TouchableOpacity>
               );
@@ -323,7 +296,7 @@ export default function AddScreen() {
           </View>
 
           {/* Date */}
-          <Text style={[styles.sectionLabel, { color: col.foreground }]}>Date</Text>
+          <Text style={[styles.sectionLabel, { color: col.foreground }]}>{t("date")}</Text>
           <TextInput
             style={[styles.textField, { backgroundColor: col.card, borderColor: col.border, color: col.foreground, borderRadius: colors.radius }]}
             placeholder="YYYY-MM-DD"
@@ -333,13 +306,10 @@ export default function AddScreen() {
           />
 
           {/* Note */}
-          <Text style={[styles.sectionLabel, { color: col.foreground }]}>Note (optional)</Text>
+          <Text style={[styles.sectionLabel, { color: col.foreground }]}>{t("noteOptional")}</Text>
           <TextInput
-            style={[
-              styles.textField,
-              { backgroundColor: col.card, borderColor: col.border, color: col.foreground, borderRadius: colors.radius, height: 70, textAlignVertical: "top" },
-            ]}
-            placeholder="What was this for?"
+            style={[styles.textField, { backgroundColor: col.card, borderColor: col.border, color: col.foreground, borderRadius: colors.radius, height: 70, textAlignVertical: "top" }]}
+            placeholder={t("noteplaceholder")}
             placeholderTextColor={col.mutedForeground}
             value={note}
             onChangeText={setNote}
@@ -348,24 +318,18 @@ export default function AddScreen() {
 
           {/* Save */}
           <TouchableOpacity
-            style={[
-              styles.saveBtn,
-              {
-                backgroundColor: saved ? col.success : canSave ? (isIncome ? "#10B981" : col.primary) : col.muted,
-                borderRadius: colors.radius,
-              },
-            ]}
+            style={[styles.saveBtn, { backgroundColor: saved ? col.success : canSave ? (isIncome ? "#10B981" : col.primary) : col.muted, borderRadius: colors.radius }]}
             onPress={handleSave}
             disabled={!canSave || saved}
           >
             {saved ? (
               <Animated.View entering={ZoomIn} style={styles.savedRow}>
                 <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />
-                <Text style={styles.saveBtnText}>Saved!</Text>
+                <Text style={styles.saveBtnText}>{t("savedBang")}</Text>
               </Animated.View>
             ) : (
               <Text style={[styles.saveBtnText, { color: canSave ? "#fff" : col.mutedForeground }]}>
-                {isIncome ? "Save income" : "Save expense"}
+                {isIncome ? t("saveIncome") : t("saveExpense")}
               </Text>
             )}
           </TouchableOpacity>
@@ -380,43 +344,28 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { paddingHorizontal: 16 },
   heading: { fontSize: 22, fontWeight: "700", marginBottom: 12, letterSpacing: -0.5 },
-
-  typeToggle: {
-    flexDirection: "row", borderRadius: 14, borderWidth: 1, padding: 4, gap: 4, marginBottom: 12,
-  },
+  typeToggle: { flexDirection: "row", borderRadius: 14, borderWidth: 1, padding: 4, gap: 4, marginBottom: 12 },
   typeBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 9, borderRadius: 10 },
   typeBtnText: { fontSize: 14, fontWeight: "700" },
-
   amountCard: { padding: 18, marginBottom: 16 },
   amountLabel: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginBottom: 2 },
   amountRow: { flexDirection: "row", alignItems: "baseline" },
   amountSymbol: { color: "#fff", fontSize: 28, fontWeight: "700", marginRight: 4 },
   amountInput: { color: "#fff", fontSize: 40, fontWeight: "800", flex: 1, letterSpacing: -1 },
-
   sectionLabel: { fontSize: 13, fontWeight: "600", marginBottom: 8, marginTop: 2 },
-
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
-  tile: {
-    alignItems: "center", justifyContent: "center", gap: 4, borderWidth: 1.5,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1,
-  },
+  tile: { alignItems: "center", justifyContent: "center", gap: 4, borderWidth: 1.5, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
   tileLabel: { fontSize: 10, fontWeight: "600", textAlign: "center" },
-
   customBox: { padding: 14, borderWidth: 1, marginBottom: 14 },
   customTitle: { fontSize: 13, fontWeight: "600", marginBottom: 8 },
-  customInput: {
-    borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14,
-  },
+  customInput: { borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14 },
   iconGrid: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   iconTile: { width: 54, alignItems: "center", padding: 8, gap: 4 },
   iconTileLabel: { fontSize: 8, textAlign: "center", fontWeight: "500" },
-
   payRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   payChip: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
   payLabel: { fontSize: 12, fontWeight: "600" },
-
   textField: { borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, marginBottom: 12 },
-
   saveBtn: { height: 52, alignItems: "center", justifyContent: "center", marginTop: 2 },
   saveBtnText: { fontSize: 16, fontWeight: "700", color: "#fff" },
   savedRow: { flexDirection: "row", alignItems: "center", gap: 8 },

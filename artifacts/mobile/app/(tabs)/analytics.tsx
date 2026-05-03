@@ -21,6 +21,7 @@ import { SpendingLineChart } from "@/components/SpendingLineChart";
 import colors from "@/constants/colors";
 import type { Category } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 import { generateAndSharePDF } from "@/utils/generatePDF";
 
@@ -29,9 +30,7 @@ const CHART_W = SCREEN_W - 64;
 
 type PeriodType = "day" | "month" | "year";
 
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
+function pad(n: number) { return String(n).padStart(2, "0"); }
 
 function dayLabel(dateStr: string): string {
   return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -58,6 +57,7 @@ export default function AnalyticsScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
   const { expenses, userProfile } = useApp();
+  const { t, language } = useLanguage();
   const [periodType, setPeriodType] = useState<PeriodType>("month");
   const [exporting, setExporting] = useState(false);
 
@@ -69,16 +69,12 @@ export default function AnalyticsScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
-  // ── Filtered expenses for the selected period ──
   const filtered = useMemo(() => {
-    if (periodType === "day") {
-      return expenses.filter((e) => e.date === selectedDate);
-    }
+    if (periodType === "day") return expenses.filter((e) => e.date === selectedDate);
     if (periodType === "month") {
       const key = `${selectedYear}-${pad(selectedMonth + 1)}`;
       return expenses.filter((e) => e.date.startsWith(key));
     }
-    // year
     return expenses.filter((e) => e.date.startsWith(String(selectedYear)));
   }, [expenses, periodType, selectedDate, selectedMonth, selectedYear]);
 
@@ -104,13 +100,12 @@ export default function AnalyticsScreen() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([cat, amount]) => ({
-        label: getCategoryLabel(cat).slice(0, 5),
+        label: getCategoryLabel(cat, language).slice(0, 5),
         value: amount,
         color: getCategoryColor(cat),
       }));
-  }, [categoryTotals]);
+  }, [categoryTotals, language]);
 
-  // Line chart data: for month → daily; for year → monthly; for day → hourly buckets (simplified)
   const lineData = useMemo(() => {
     if (periodType === "month") {
       const dayMap: Record<string, number> = {};
@@ -127,21 +122,18 @@ export default function AnalyticsScreen() {
     return [];
   }, [periodType, filtered]);
 
-  // Monthly data for PDF bar chart
   const monthlyDataForPDF = useMemo(() => {
-    if (periodType === "year") return lineData;
-    if (periodType === "month") return lineData;
+    if (periodType === "year") return lineData.map((d) => ({ label: d.label, amount: d.value }));
+    if (periodType === "month") return lineData.map((d) => ({ label: d.label, amount: d.value }));
     return [];
   }, [periodType, lineData]);
 
-  // Period label for header + PDF
   const periodLabel = useMemo(() => {
     if (periodType === "day") return dayLabel(selectedDate);
     if (periodType === "month") return monthLabel(selectedYear, selectedMonth);
     return String(selectedYear);
   }, [periodType, selectedDate, selectedMonth, selectedYear]);
 
-  // Navigation helpers
   const navigateDay = (dir: -1 | 1) => {
     Haptics.selectionAsync();
     setSelectedDate((d) => (dir === -1 ? prevDay(d) : nextDay(d)));
@@ -162,26 +154,31 @@ export default function AnalyticsScreen() {
 
   const handleExport = async () => {
     if (filtered.length === 0) {
-      Alert.alert("No data", "There are no expenses in this period to export.");
+      Alert.alert(t("noData"), t("noExpensesToExport"));
       return;
     }
     try {
       setExporting(true);
-      await generateAndSharePDF({
-        expenses: filtered,
-        userProfile,
-        periodLabel,
-        periodType,
-        monthlyData: monthlyDataForPDF,
-      });
-    } catch (e) {
-      Alert.alert("Export failed", "Could not generate the PDF. Please try again.");
+      await generateAndSharePDF({ expenses: filtered, userProfile, periodLabel, periodType, monthlyData: monthlyDataForPDF });
+    } catch {
+      Alert.alert(t("exportFailed"), t("couldNotGeneratePDF"));
     } finally {
       setExporting(false);
     }
   };
 
   const totalFormatted = `$${totalSpent.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
+  const PERIOD_LABELS: Record<PeriodType, string> = {
+    day: t("day"),
+    month: t("month"),
+    year: t("year"),
+  };
+
+  const heroLabel =
+    periodType === "day" ? t("spentOnThisDay")
+    : periodType === "month" ? t("spentThisMonth")
+    : t("spentThisYear");
 
   return (
     <View style={[styles.root, { backgroundColor: col.background }]}>
@@ -191,7 +188,7 @@ export default function AnalyticsScreen() {
       >
         {/* Title + Export */}
         <View style={styles.pageHeader}>
-          <Text style={[styles.heading, { color: col.foreground }]}>Analytics</Text>
+          <Text style={[styles.heading, { color: col.foreground }]}>{t("analytics")}</Text>
           <TouchableOpacity
             style={[styles.exportBtn, { backgroundColor: col.primary, opacity: exporting ? 0.7 : 1 }]}
             onPress={handleExport}
@@ -202,7 +199,7 @@ export default function AnalyticsScreen() {
             ) : (
               <>
                 <Feather name="download" size={14} color="#fff" />
-                <Text style={styles.exportText}>Export PDF</Text>
+                <Text style={styles.exportText}>{t("exportPDF")}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -220,7 +217,7 @@ export default function AnalyticsScreen() {
               onPress={() => { setPeriodType(pt); Haptics.selectionAsync(); }}
             >
               <Text style={[styles.periodTypeText, { color: periodType === pt ? "#fff" : col.mutedForeground }]}>
-                {pt.charAt(0).toUpperCase() + pt.slice(1)}
+                {PERIOD_LABELS[pt]}
               </Text>
             </TouchableOpacity>
           ))}
@@ -252,31 +249,31 @@ export default function AnalyticsScreen() {
 
         {/* Total hero */}
         <View style={[styles.heroCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
-          <Text style={styles.heroLabel}>
-            {periodType === "day" ? "Spent on this day" : periodType === "month" ? "Spent this month" : "Spent this year"}
-          </Text>
+          <Text style={styles.heroLabel}>{heroLabel}</Text>
           <Text style={styles.heroAmount}>{totalFormatted}</Text>
-          <Text style={styles.heroSub}>{filtered.length} transaction{filtered.length !== 1 ? "s" : ""}</Text>
+          <Text style={styles.heroSub}>
+            {filtered.length} {filtered.length !== 1 ? t("transactions") : t("transaction")}
+          </Text>
         </View>
 
         {filtered.length === 0 ? (
           <View style={[styles.empty, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
             <Feather name="inbox" size={32} color={col.mutedForeground} />
-            <Text style={[styles.emptyText, { color: col.mutedForeground }]}>No expenses in this period</Text>
+            <Text style={[styles.emptyText, { color: col.mutedForeground }]}>{t("noExpensesInPeriod")}</Text>
           </View>
         ) : (
           <>
             {/* Donut chart */}
             <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-              <Text style={[styles.cardTitle, { color: col.foreground }]}>Spending by category</Text>
+              <Text style={[styles.cardTitle, { color: col.foreground }]}>{t("spendingByCategory")}</Text>
               <View style={styles.donutRow}>
-                <DonutChart data={donutData} size={170} innerRadius={48} centerLabel={totalFormatted} centerSubLabel="total" />
+                <DonutChart data={donutData} size={170} innerRadius={48} centerLabel={totalFormatted} centerSubLabel={t("total")} />
                 <View style={styles.legend}>
                   {donutData.slice(0, 5).map((d) => (
                     <View key={d.category} style={styles.legendItem}>
                       <View style={[styles.legendDot, { backgroundColor: getCategoryColor(d.category) }]} />
                       <Text style={[styles.legendLabel, { color: col.foreground }]} numberOfLines={1}>
-                        {getCategoryLabel(d.category)}
+                        {getCategoryLabel(d.category, language)}
                       </Text>
                       <Text style={[styles.legendPct, { color: col.mutedForeground }]}>
                         {d.percentage.toFixed(0)}%
@@ -287,11 +284,11 @@ export default function AnalyticsScreen() {
               </View>
             </View>
 
-            {/* Line chart — only for month and year */}
+            {/* Line chart */}
             {periodType !== "day" && lineData.length >= 2 && (
               <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
                 <Text style={[styles.cardTitle, { color: col.foreground }]}>
-                  {periodType === "month" ? "Daily spending" : "Monthly spending"}
+                  {periodType === "month" ? t("dailySpending") : t("monthlySpending")}
                 </Text>
                 <SpendingLineChart data={lineData} width={CHART_W} height={130} />
               </View>
@@ -300,21 +297,21 @@ export default function AnalyticsScreen() {
             {/* Bar chart */}
             {barData.length > 0 && (
               <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-                <Text style={[styles.cardTitle, { color: col.foreground }]}>Category comparison</Text>
+                <Text style={[styles.cardTitle, { color: col.foreground }]}>{t("categoryComparison")}</Text>
                 <BarChart data={barData} width={CHART_W} height={140} />
               </View>
             )}
 
             {/* Full breakdown list */}
             <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-              <Text style={[styles.cardTitle, { color: col.foreground }]}>Full breakdown</Text>
+              <Text style={[styles.cardTitle, { color: col.foreground }]}>{t("fullBreakdown")}</Text>
               {donutData.map((d, i) => (
                 <View
                   key={d.category}
                   style={[styles.breakdownItem, i < donutData.length - 1 && { borderBottomWidth: 1, borderBottomColor: col.border }]}
                 >
                   <View style={[styles.breakdownDot, { backgroundColor: getCategoryColor(d.category) }]} />
-                  <Text style={[styles.breakdownLabel, { color: col.foreground }]}>{getCategoryLabel(d.category)}</Text>
+                  <Text style={[styles.breakdownLabel, { color: col.foreground }]}>{getCategoryLabel(d.category, language)}</Text>
                   <View style={styles.breakdownRight}>
                     <Text style={[styles.breakdownAmount, { color: col.foreground }]}>${d.amount.toFixed(0)}</Text>
                     <Text style={[styles.breakdownPct, { color: col.mutedForeground }]}>{d.percentage.toFixed(1)}%</Text>
@@ -336,19 +333,10 @@ const styles = StyleSheet.create({
   heading: { fontSize: 24, fontWeight: "700", letterSpacing: -0.5 },
   exportBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
   exportText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  periodTypeRow: {
-    flexDirection: "row", borderRadius: 14, borderWidth: 1, padding: 4,
-    marginBottom: 10, gap: 4,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
-  },
+  periodTypeRow: { flexDirection: "row", borderRadius: 14, borderWidth: 1, padding: 4, marginBottom: 10, gap: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
   periodTypeBtn: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center" },
   periodTypeText: { fontSize: 14, fontWeight: "700" },
-  navigator: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    borderRadius: colors.radius, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10,
-    marginBottom: 12,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
-  },
+  navigator: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: colors.radius, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
   navArrow: { padding: 4 },
   navLabel: { fontSize: 15, fontWeight: "700", flex: 1, textAlign: "center" },
   heroCard: { padding: 20, marginBottom: 12 },
@@ -357,10 +345,7 @@ const styles = StyleSheet.create({
   heroSub: { color: "rgba(255,255,255,0.6)", fontSize: 12 },
   empty: { alignItems: "center", padding: 40, borderWidth: 1, gap: 10, marginTop: 4 },
   emptyText: { fontSize: 14 },
-  card: {
-    padding: 16, marginBottom: 12, borderWidth: 1,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-  },
+  card: { padding: 16, marginBottom: 12, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   cardTitle: { fontSize: 15, fontWeight: "700", marginBottom: 12 },
   donutRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   legend: { flex: 1, gap: 8 },

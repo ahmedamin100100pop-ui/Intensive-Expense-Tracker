@@ -2,6 +2,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 
+import type { LanguageCode } from "@/constants/translations";
+import { getCategoryLabelForLang } from "@/constants/translations";
 import type { Category } from "@/context/AppContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -60,21 +62,9 @@ export function getCategoryColor(category: Category): string {
   return CATEGORY_CONFIG[category]?.color ?? "#6B7280";
 }
 
-export function getCategoryLabel(category: Category): string {
-  const labels: Record<Category, string> = {
-    food: "Food",
-    transport: "Transport",
-    shopping: "Shopping",
-    rent: "Rent",
-    bills: "Bills",
-    health: "Health",
-    entertainment: "Entertainment",
-    education: "Education",
-    travel: "Travel",
-    family: "Family",
-    other: "Other",
-  };
-  return labels[category] ?? "Other";
+/** Returns the category label in the given language (defaults to English). */
+export function getCategoryLabel(category: Category | string, lang: LanguageCode = "en"): string {
+  return getCategoryLabelForLang(category, lang);
 }
 
 const styles = StyleSheet.create({

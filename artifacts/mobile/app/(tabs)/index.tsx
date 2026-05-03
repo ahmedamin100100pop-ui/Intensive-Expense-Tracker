@@ -16,7 +16,9 @@ import { CategoryIcon, getCategoryLabel } from "@/components/CategoryIcon";
 import { DashboardCard } from "@/components/DashboardCard";
 import { ExpenseCard } from "@/components/ExpenseCard";
 import colors from "@/constants/colors";
+import type { TranslationKeys } from "@/constants/translations";
 import { useApp } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 
 function formatCurrency(amount: number): string {
@@ -28,10 +30,20 @@ function getCurrentMonthPrefix(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+const PERSONALITY_KEY: Record<string, keyof TranslationKeys> = {
+  "Balanced Spender":            "personalityBalanced",
+  "Weekend Spender":             "personalityWeekend",
+  "Food Lover":                  "personalityFood",
+  "Impulse Shopper":             "personalityImpulse",
+  "Small Purchases Collector":   "personalitySmall",
+  "Careful Planner":             "personalityCareful",
+};
+
 export default function HomeScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
-  const { summary, userProfile, expenses, currentMonthExpenses, currentMonthIncomeEntries, deleteExpense, isLoading } = useApp();
+  const { summary, userProfile, expenses, deleteExpense, isLoading } = useApp();
+  const { t, language } = useLanguage();
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
@@ -45,7 +57,6 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 600);
   };
 
-  // Combine current-month expenses + income, sort newest first, take 5
   const recentTransactions = useMemo(() => {
     const prefix = getCurrentMonthPrefix();
     const all = expenses.filter((e) => e.date.startsWith(prefix));
@@ -54,11 +65,11 @@ export default function HomeScreen() {
 
   if (isLoading || !summary) return null;
 
+  const locale = language === "ar" ? "ar-SA" : "en-US";
   const pctChange = summary.percentChange;
   const pctLabel = pctChange >= 0
-    ? `+${pctChange.toFixed(0)}% vs last month`
-    : `${pctChange.toFixed(0)}% vs last month`;
-  const pctColor = pctChange > 0 ? col.warning : col.success;
+    ? t("pctVsLastMonth_more", { pct: pctChange.toFixed(0) })
+    : t("pctVsLastMonth_less", { pct: Math.abs(pctChange).toFixed(0) });
 
   const budgetPct = userProfile
     ? Math.round((summary.totalCurrentMonth / userProfile.monthlyBudget) * 100)
@@ -68,6 +79,10 @@ export default function HomeScreen() {
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
+
+  const personalityLabel = summary.moneyPersonality
+    ? t(PERSONALITY_KEY[summary.moneyPersonality] ?? "personalityBalanced")
+    : "";
 
   return (
     <View style={[styles.root, { backgroundColor: col.background }]}>
@@ -80,23 +95,19 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={[styles.greeting, { color: col.mutedForeground }]}>
-              {userProfile?.name ? `Hi, ${userProfile.name.split(" ")[0]}` : "Good morning"}
+              {userProfile?.name
+                ? `${t("goodMorning")}, ${userProfile.name.split(" ")[0]}`
+                : t("goodMorning")}
             </Text>
             <Text style={[styles.monthLabel, { color: col.foreground }]}>
-              {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              {new Date().toLocaleDateString(locale, { month: "long", year: "numeric" })}
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => router.push("/report")}
-              style={[styles.headerBtn, { backgroundColor: col.secondary }]}
-            >
+            <TouchableOpacity onPress={() => router.push("/report")} style={[styles.headerBtn, { backgroundColor: col.secondary }]}>
               <Feather name="bar-chart-2" size={16} color={col.primary} />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.push("/settings")}
-              style={[styles.headerBtn, { backgroundColor: col.secondary }]}
-            >
+            <TouchableOpacity onPress={() => router.push("/settings")} style={[styles.headerBtn, { backgroundColor: col.secondary }]}>
               <Feather name="settings" size={16} color={col.primary} />
             </TouchableOpacity>
           </View>
@@ -106,18 +117,18 @@ export default function HomeScreen() {
         {hasIncome ? (
           <View style={styles.balanceRow}>
             <View style={[styles.balanceCard, { backgroundColor: "#10B981", borderRadius: colors.radius + 4, flex: 1 }]}>
-              <Text style={styles.balanceCardLabel}>Income</Text>
+              <Text style={styles.balanceCardLabel}>{t("incomeLabel")}</Text>
               <Text style={styles.balanceCardAmount}>{formatCurrency(summary.totalCurrentMonthIncome)}</Text>
             </View>
             <View style={[styles.balanceCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4, flex: 1 }]}>
-              <Text style={styles.balanceCardLabel}>Spent</Text>
+              <Text style={styles.balanceCardLabel}>{t("spentLabel")}</Text>
               <Text style={styles.balanceCardAmount}>{formatCurrency(summary.totalCurrentMonth)}</Text>
             </View>
           </View>
         ) : (
           /* Hero spending card (no income) */
           <View style={[styles.heroCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
-            <Text style={styles.heroLabel}>Total spent this month</Text>
+            <Text style={styles.heroLabel}>{t("totalSpentThisMonth")}</Text>
             <Text style={styles.heroAmount}>{formatCurrency(summary.totalCurrentMonth)}</Text>
             <View style={styles.heroRow}>
               <View style={styles.heroPill}>
@@ -130,7 +141,7 @@ export default function HomeScreen() {
                   <View style={[styles.budgetFill, { width: `${Math.min(budgetPct, 100)}%`, backgroundColor: budgetPct > 90 ? "#FBBF24" : "rgba(255,255,255,0.9)" }]} />
                 </View>
                 <Text style={styles.budgetLabel}>
-                  {formatCurrency(summary.remainingBudget)} remaining of {formatCurrency(userProfile.monthlyBudget)} budget
+                  {formatCurrency(summary.remainingBudget)} {t("budgetRemaining")} {t("of")} {formatCurrency(userProfile.monthlyBudget)} {t("budget")}
                 </Text>
               </View>
             )}
@@ -141,19 +152,16 @@ export default function HomeScreen() {
         {hasIncome && userProfile && (
           <View style={[styles.budgetCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
             <View style={styles.budgetCardHeader}>
-              <Text style={[styles.budgetCardTitle, { color: col.foreground }]}>Budget</Text>
+              <Text style={[styles.budgetCardTitle, { color: col.foreground }]}>{t("budget")}</Text>
               <Text style={[styles.budgetCardPct, { color: budgetPct > 90 ? col.warning : col.success }]}>
-                {budgetPct}% used
+                {budgetPct}{t("usedPct")}
               </Text>
             </View>
             <View style={[styles.budgetTrack, { backgroundColor: col.muted }]}>
-              <View style={[
-                styles.budgetFill,
-                { width: `${Math.min(budgetPct, 100)}%`, backgroundColor: budgetPct > 90 ? col.warning : col.primary },
-              ]} />
+              <View style={[styles.budgetFill, { width: `${Math.min(budgetPct, 100)}%`, backgroundColor: budgetPct > 90 ? col.warning : col.primary }]} />
             </View>
             <Text style={[styles.budgetCardSub, { color: col.mutedForeground }]}>
-              {formatCurrency(summary.remainingBudget)} remaining of {formatCurrency(userProfile.monthlyBudget)}
+              {formatCurrency(summary.remainingBudget)} {t("budgetRemaining")} {t("of")} {formatCurrency(userProfile.monthlyBudget)}
             </Text>
           </View>
         )}
@@ -161,8 +169,8 @@ export default function HomeScreen() {
         {/* Stats row */}
         <View style={styles.statsRow}>
           <DashboardCard
-            title="Top category"
-            value={summary.topCategory ? getCategoryLabel(summary.topCategory) : "—"}
+            title={t("topCategory")}
+            value={summary.topCategory ? getCategoryLabel(summary.topCategory, language) : t("noData")}
             style={styles.statCard}
             compact
           >
@@ -174,27 +182,22 @@ export default function HomeScreen() {
           </DashboardCard>
 
           <DashboardCard
-            title="Daily average"
+            title={t("dailyAverage")}
             value={`$${summary.averageDaily.toFixed(0)}`}
-            subtitle={`${new Date().getDate()} days in`}
+            subtitle={`${new Date().getDate()} ${t("daysIn")}`}
             style={styles.statCard}
             compact
           />
         </View>
 
         {/* Money personality */}
-        <View
-          style={[
-            styles.personalityCard,
-            { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius },
-          ]}
-        >
+        <View style={[styles.personalityCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
           <View style={[styles.personalityIcon, { backgroundColor: col.secondary }]}>
             <Feather name="user" size={18} color={col.primary} />
           </View>
           <View style={styles.personalityContent}>
-            <Text style={[styles.personalityLabel, { color: col.mutedForeground }]}>Your money personality</Text>
-            <Text style={[styles.personalityValue, { color: col.foreground }]}>{summary.moneyPersonality}</Text>
+            <Text style={[styles.personalityLabel, { color: col.mutedForeground }]}>{t("moneyPersonality")}</Text>
+            <Text style={[styles.personalityValue, { color: col.foreground }]}>{personalityLabel}</Text>
           </View>
         </View>
 
@@ -202,29 +205,29 @@ export default function HomeScreen() {
         {(summary.weekendTotal > 0 || summary.weekdayTotal > 0) && (
           <View style={styles.compareRow}>
             <View style={[styles.compareCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-              <Text style={[styles.compareLabel, { color: col.mutedForeground }]}>Weekdays</Text>
+              <Text style={[styles.compareLabel, { color: col.mutedForeground }]}>{t("weekdays")}</Text>
               <Text style={[styles.compareValue, { color: col.foreground }]}>{formatCurrency(summary.weekdayTotal)}</Text>
             </View>
             <View style={[styles.compareCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-              <Text style={[styles.compareLabel, { color: col.mutedForeground }]}>Weekends</Text>
+              <Text style={[styles.compareLabel, { color: col.mutedForeground }]}>{t("weekends")}</Text>
               <Text style={[styles.compareValue, { color: col.foreground }]}>{formatCurrency(summary.weekendTotal)}</Text>
             </View>
           </View>
         )}
 
-        {/* Recent transactions (income + expenses) */}
+        {/* Recent transactions */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: col.foreground }]}>Recent transactions</Text>
+            <Text style={[styles.sectionTitle, { color: col.foreground }]}>{t("recentTransactions")}</Text>
             <TouchableOpacity onPress={() => router.push("/(tabs)/analytics")}>
-              <Text style={[styles.seeAll, { color: col.primary }]}>See all</Text>
+              <Text style={[styles.seeAll, { color: col.primary }]}>{t("seeAll")}</Text>
             </TouchableOpacity>
           </View>
           {recentTransactions.length === 0 ? (
             <View style={[styles.emptyState, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
               <Feather name="inbox" size={32} color={col.mutedForeground} />
-              <Text style={[styles.emptyText, { color: col.mutedForeground }]}>No transactions this month</Text>
-              <Text style={[styles.emptySubtext, { color: col.mutedForeground }]}>Tap + to add your first one</Text>
+              <Text style={[styles.emptyText, { color: col.mutedForeground }]}>{t("noTransactionsThisMonth")}</Text>
+              <Text style={[styles.emptySubtext, { color: col.mutedForeground }]}>{t("tapToAddFirst")}</Text>
             </View>
           ) : (
             recentTransactions.map((e, i) => (
@@ -245,12 +248,10 @@ const styles = StyleSheet.create({
   monthLabel: { fontSize: 20, fontWeight: "700", marginTop: 2, letterSpacing: -0.5 },
   headerActions: { flexDirection: "row", gap: 8, alignItems: "center" },
   headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
-
   balanceRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
   balanceCard: { padding: 18 },
   balanceCardLabel: { color: "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: "500", marginBottom: 4 },
   balanceCardAmount: { color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
-
   heroCard: { padding: 20, marginBottom: 14 },
   heroLabel: { color: "rgba(255,255,255,0.75)", fontSize: 13, fontWeight: "500", marginBottom: 4 },
   heroAmount: { color: "#fff", fontSize: 40, fontWeight: "800", letterSpacing: -1, marginBottom: 10 },
@@ -261,25 +262,20 @@ const styles = StyleSheet.create({
   budgetTrack: { height: 5, borderRadius: 3, overflow: "hidden" },
   budgetFill: { height: "100%", borderRadius: 3 },
   budgetLabel: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
-
-  budgetCard: { padding: 14, marginBottom: 14, borderWidth: 1, gap: 8,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
+  budgetCard: { padding: 14, marginBottom: 14, borderWidth: 1, gap: 8, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
   budgetCardHeader: { flexDirection: "row", justifyContent: "space-between" },
   budgetCardTitle: { fontSize: 13, fontWeight: "600" },
   budgetCardPct: { fontSize: 13, fontWeight: "700" },
   budgetCardSub: { fontSize: 12 },
-
   statsRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
   statCard: { flex: 1 },
-  personalityCard: { flexDirection: "row", alignItems: "center", padding: 14, marginBottom: 10, borderWidth: 1, gap: 12,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
+  personalityCard: { flexDirection: "row", alignItems: "center", padding: 14, marginBottom: 10, borderWidth: 1, gap: 12, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
   personalityIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   personalityContent: { flex: 1 },
   personalityLabel: { fontSize: 12 },
   personalityValue: { fontSize: 15, fontWeight: "700", marginTop: 1 },
   compareRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
-  compareCard: { flex: 1, padding: 14, borderWidth: 1,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
+  compareCard: { flex: 1, padding: 14, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
   compareLabel: { fontSize: 12, marginBottom: 4 },
   compareValue: { fontSize: 18, fontWeight: "700" },
   section: { marginTop: 6 },

@@ -19,6 +19,7 @@ import { getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
 import type { Category } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 
 const ALL_CATEGORIES: Category[] = [
@@ -30,6 +31,7 @@ export default function BudgetScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
   const { summary, userProfile, categoryBudgets, setCategoryBudget, setUserProfile } = useApp();
+  const { t, language } = useLanguage();
 
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [editAmount, setEditAmount] = useState("");
@@ -77,47 +79,36 @@ export default function BudgetScreen() {
         contentContainerStyle={[styles.scroll, { paddingTop: topPad + 16, paddingBottom: botPad + 90 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.heading, { color: col.foreground }]}>Budget</Text>
+        <Text style={[styles.heading, { color: col.foreground }]}>{t("tabBudget")}</Text>
 
         {/* Monthly overview */}
         <View style={[styles.overallCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
           <View style={styles.overallHeader}>
             <View>
-              <Text style={styles.overallLabel}>Monthly budget</Text>
+              <Text style={styles.overallLabel}>{t("monthlyBudget")}</Text>
               <Text style={styles.overallAmount}>${totalBudget.toLocaleString()}</Text>
             </View>
             <TouchableOpacity
               style={styles.editMonthly}
-              onPress={() => {
-                setMonthlyBudgetInput(totalBudget.toString());
-                setEditMonthly(true);
-              }}
+              onPress={() => { setMonthlyBudgetInput(totalBudget.toString()); setEditMonthly(true); }}
             >
               <Feather name="edit-2" size={16} color="rgba(255,255,255,0.8)" />
             </TouchableOpacity>
           </View>
           <View style={styles.overallProgress}>
             <View style={[styles.overallTrack, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-              <View
-                style={[
-                  styles.overallFill,
-                  {
-                    width: `${Math.min(overallPct * 100, 100)}%`,
-                    backgroundColor: overallPct > 0.9 ? "#FBBF24" : "rgba(255,255,255,0.9)",
-                  },
-                ]}
-              />
+              <View style={[styles.overallFill, { width: `${Math.min(overallPct * 100, 100)}%`, backgroundColor: overallPct > 0.9 ? "#FBBF24" : "rgba(255,255,255,0.9)" }]} />
             </View>
             <Text style={styles.overallSub}>
-              ${totalSpent.toFixed(0)} spent · ${Math.max(totalBudget - totalSpent, 0).toFixed(0)} left
+              ${totalSpent.toFixed(0)} {t("spent")} · ${Math.max(totalBudget - totalSpent, 0).toFixed(0)} {t("left")}
             </Text>
           </View>
         </View>
 
         {/* Category budgets */}
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: col.foreground }]}>Category budgets</Text>
-          <Text style={[styles.sectionSub, { color: col.mutedForeground }]}>Tap to edit</Text>
+          <Text style={[styles.sectionTitle, { color: col.foreground }]}>{t("categoryBudgets")}</Text>
+          <Text style={[styles.sectionSub, { color: col.mutedForeground }]}>{t("tapToEdit")}</Text>
         </View>
 
         {budgetsWithSpending.map((b) => (
@@ -126,13 +117,14 @@ export default function BudgetScreen() {
               category={b.category}
               budgetAmount={b.budgetAmount}
               spentAmount={b.spentAmount}
+              language={language}
             />
           </TouchableOpacity>
         ))}
 
         {/* Add budget for unconfigured categories */}
         <Text style={[styles.sectionTitle, { color: col.foreground, marginTop: 8, marginBottom: 10 }]}>
-          Add more budgets
+          {t("addMoreBudgets")}
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.addRow}>
           {ALL_CATEGORIES.filter((c) => !categoryBudgets.some((b) => b.category === c)).map((c) => (
@@ -142,7 +134,7 @@ export default function BudgetScreen() {
               onPress={() => openEdit(c)}
             >
               <Feather name="plus" size={14} color={col.primary} />
-              <Text style={[styles.addChipText, { color: col.foreground }]}>{getCategoryLabel(c)}</Text>
+              <Text style={[styles.addChipText, { color: col.foreground }]}>{getCategoryLabel(c, language)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -153,7 +145,7 @@ export default function BudgetScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius + 4 }]}>
             <Text style={[styles.modalTitle, { color: col.foreground }]}>
-              {getCategoryLabel(editCategory ?? "other")} budget
+              {t("budgetModal", { category: getCategoryLabel(editCategory ?? "other", language) })}
             </Text>
             <View style={[styles.modalInput, { borderColor: col.border, backgroundColor: col.background }]}>
               <Text style={[styles.modalCurrency, { color: col.mutedForeground }]}>$</Text>
@@ -168,17 +160,11 @@ export default function BudgetScreen() {
               />
             </View>
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={() => { setEditCategory(null); setEditAmount(""); }}
-                style={[styles.modalCancel, { borderColor: col.border }]}
-              >
-                <Text style={[styles.modalCancelText, { color: col.foreground }]}>Cancel</Text>
+              <TouchableOpacity onPress={() => { setEditCategory(null); setEditAmount(""); }} style={[styles.modalCancel, { borderColor: col.border }]}>
+                <Text style={[styles.modalCancelText, { color: col.foreground }]}>{t("cancel")}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={saveEdit}
-                style={[styles.modalSave, { backgroundColor: col.primary }]}
-              >
-                <Text style={styles.modalSaveText}>Save</Text>
+              <TouchableOpacity onPress={saveEdit} style={[styles.modalSave, { backgroundColor: col.primary }]}>
+                <Text style={styles.modalSaveText}>{t("save")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -189,7 +175,7 @@ export default function BudgetScreen() {
       <Modal visible={editMonthly} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius + 4 }]}>
-            <Text style={[styles.modalTitle, { color: col.foreground }]}>Monthly budget</Text>
+            <Text style={[styles.modalTitle, { color: col.foreground }]}>{t("monthlyBudget")}</Text>
             <View style={[styles.modalInput, { borderColor: col.border, backgroundColor: col.background }]}>
               <Text style={[styles.modalCurrency, { color: col.mutedForeground }]}>$</Text>
               <TextInput
@@ -203,17 +189,11 @@ export default function BudgetScreen() {
               />
             </View>
             <View style={styles.modalActions}>
-              <TouchableOpacity
-                onPress={() => { setEditMonthly(false); setMonthlyBudgetInput(""); }}
-                style={[styles.modalCancel, { borderColor: col.border }]}
-              >
-                <Text style={[styles.modalCancelText, { color: col.foreground }]}>Cancel</Text>
+              <TouchableOpacity onPress={() => { setEditMonthly(false); setMonthlyBudgetInput(""); }} style={[styles.modalCancel, { borderColor: col.border }]}>
+                <Text style={[styles.modalCancelText, { color: col.foreground }]}>{t("cancel")}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={saveMonthlyBudget}
-                style={[styles.modalSave, { backgroundColor: col.primary }]}
-              >
-                <Text style={styles.modalSaveText}>Save</Text>
+              <TouchableOpacity onPress={saveMonthlyBudget} style={[styles.modalSave, { backgroundColor: col.primary }]}>
+                <Text style={styles.modalSaveText}>{t("save")}</Text>
               </TouchableOpacity>
             </View>
           </View>

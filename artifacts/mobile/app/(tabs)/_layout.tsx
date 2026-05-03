@@ -5,9 +5,10 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, TouchableOpacity, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 
 function NativeTabLayout() {
@@ -44,6 +45,7 @@ function ClassicTabLayout() {
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
 
   const TAB_ITEMS_HEIGHT = isWeb ? 60 : 58;
   const bottomPad = isWeb ? 24 : insets.bottom;
@@ -84,7 +86,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: t("tabHome"),
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="house" tintColor={color} size={22} />
@@ -96,7 +98,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="analytics"
         options={{
-          title: "Analytics",
+          title: t("tabAnalytics"),
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="chart.bar" tintColor={color} size={22} />
@@ -108,7 +110,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="add"
         options={{
-          title: "Add",
+          title: t("tabAdd"),
           tabBarIcon: ({ color, focused }) => (
             <View
               style={{
@@ -134,7 +136,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="insights"
         options={{
-          title: "Insights",
+          title: t("tabInsights"),
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="lightbulb" tintColor={color} size={22} />
@@ -146,7 +148,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="budget"
         options={{
-          title: "Budget",
+          title: t("tabBudget"),
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="target" tintColor={color} size={22} />

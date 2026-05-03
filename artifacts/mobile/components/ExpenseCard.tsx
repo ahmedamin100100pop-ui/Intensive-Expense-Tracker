@@ -6,6 +6,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { CategoryIcon, getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
 import type { Expense } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 
 interface Props {
@@ -14,9 +15,9 @@ interface Props {
   index?: number;
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, locale: string): string {
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 const INCOME_COLOR = "#10B981";
@@ -24,11 +25,14 @@ const INCOME_BG    = "#ECFDF5";
 
 export function ExpenseCard({ expense, onDelete, index = 0 }: Props) {
   const col = useColors();
+  const { t, language } = useLanguage();
   const isIncome = !!expense.isIncome;
 
+  const locale = language === "ar" ? "ar-SA" : "en-US";
+
   const displayLabel = isIncome
-    ? (expense.customLabel ?? "Income")
-    : getCategoryLabel(expense.category);
+    ? (expense.customLabel ?? t("income"))
+    : getCategoryLabel(expense.category, language);
 
   const amountText = isIncome
     ? `+$${expense.amount.toFixed(2)}`
@@ -69,26 +73,20 @@ export function ExpenseCard({ expense, onDelete, index = 0 }: Props) {
             </Text>
             {isIncome && (
               <View style={styles.incomeBadge}>
-                <Text style={styles.incomeBadgeText}>Income</Text>
+                <Text style={styles.incomeBadgeText}>{t("income")}</Text>
               </View>
             )}
           </View>
-          {expense.note ? (
-            <Text style={[styles.note, { color: col.mutedForeground }]} numberOfLines={1}>
-              {expense.note}
-            </Text>
-          ) : (
-            <Text style={[styles.note, { color: col.mutedForeground }]}>
-              {formatDate(expense.date)}
-            </Text>
-          )}
+          <Text style={[styles.note, { color: col.mutedForeground }]} numberOfLines={1}>
+            {expense.note ? expense.note : formatDate(expense.date, locale)}
+          </Text>
         </View>
 
         {/* Amount + date */}
         <View style={styles.right}>
           <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
           <Text style={[styles.date, { color: col.mutedForeground }]}>
-            {formatDate(expense.date)}
+            {formatDate(expense.date, locale)}
           </Text>
         </View>
 
@@ -108,34 +106,14 @@ export function ExpenseCard({ expense, onDelete, index = 0 }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    gap: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    flexDirection: "row", alignItems: "center", padding: 12, marginBottom: 8, borderWidth: 1, gap: 12,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
   },
-  incomeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  incomeIcon: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
   info: { flex: 1 },
   labelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   category: { fontSize: 14, fontWeight: "600" },
-  incomeBadge: {
-    backgroundColor: "#D1FAE5",
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
+  incomeBadge: { backgroundColor: "#D1FAE5", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 1 },
   incomeBadgeText: { fontSize: 9, fontWeight: "700", color: "#065F46" },
   note: { fontSize: 12, marginTop: 1 },
   right: { alignItems: "flex-end" },

@@ -17,12 +17,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 import { generateAndSharePDF } from "@/utils/generatePDF";
 
 export default function ReportScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
+  const { t, language } = useLanguage();
   const { summary, userProfile, currentMonthExpenses, expenses } = useApp();
   const [exporting, setExporting] = useState(false);
 
@@ -31,50 +33,49 @@ export default function ReportScreen() {
 
   if (!summary) return null;
 
-  const monthName = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const monthName = new Date().toLocaleDateString(language === "ar" ? "ar-SA" : "en-US", { month: "long", year: "numeric" });
   const prevMonthName = (() => {
     const d = new Date();
     d.setMonth(d.getMonth() - 1);
-    return d.toLocaleDateString("en-US", { month: "long" });
+    return d.toLocaleDateString(language === "ar" ? "ar-SA" : "en-US", { month: "long" });
   })();
 
   const pct = summary.percentChange;
   const pctLabel = pct >= 0
-    ? `${pct.toFixed(0)}% more than ${prevMonthName}`
-    : `${Math.abs(pct).toFixed(0)}% less than ${prevMonthName}`;
+    ? `${pct.toFixed(0)}% ${t("vs")} ${prevMonthName}`
+    : `${Math.abs(pct).toFixed(0)}% ${t("vs")} ${prevMonthName}`;
 
-  // Monthly trend data for PDF
   const monthlyData = (() => {
     const monthMap: Record<string, number> = {};
     expenses.forEach((e) => { const k = e.date.slice(0, 7); monthMap[k] = (monthMap[k] ?? 0) + e.amount; });
     return Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0])).slice(-6)
-      .map(([k, v]) => ({
-        label: new Date(k + "-01").toLocaleDateString("en-US", { month: "short" }),
-        amount: v,
-      }));
+      .map(([k, v]) => ({ label: new Date(k + "-01").toLocaleDateString("en-US", { month: "short" }), amount: v }));
   })();
 
   const handleExport = async () => {
     if (currentMonthExpenses.length === 0) {
-      Alert.alert("No data", "There are no expenses this month to export.");
+      Alert.alert(t("noData"), t("noExpensesToExport"));
       return;
     }
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setExporting(true);
-      await generateAndSharePDF({
-        expenses: currentMonthExpenses,
-        userProfile,
-        periodLabel: monthName,
-        periodType: "month",
-        monthlyData,
-      });
+      await generateAndSharePDF({ expenses: currentMonthExpenses, userProfile, periodLabel: monthName, periodType: "month", monthlyData });
     } catch {
-      Alert.alert("Export failed", "Could not generate the PDF. Please try again.");
+      Alert.alert(t("exportFailed"), t("couldNotGeneratePDF"));
     } finally {
       setExporting(false);
     }
   };
+
+  const topCatLabel = summary.topCategory ? getCategoryLabel(summary.topCategory, language) : t("noData");
+
+  const STATS = [
+    { label: t("topCategory"),    value: topCatLabel },
+    { label: t("dailyAverage"),   value: `$${summary.averageDaily.toFixed(0)}` },
+    { label: t("weekends"),       value: `$${summary.weekendTotal.toFixed(0)}` },
+    { label: t("tabInsights"),    value: `${summary.smallPurchasesPercent.toFixed(0)}%` },
+  ];
 
   return (
     <View style={[styles.root, { backgroundColor: col.background }]}>
@@ -87,7 +88,7 @@ export default function ReportScreen() {
           <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <Feather name="arrow-left" size={22} color={col.foreground} />
           </TouchableOpacity>
-          <Text style={[styles.heading, { color: col.foreground }]}>Monthly Report</Text>
+          <Text style={[styles.heading, { color: col.foreground }]}>{t("report")}</Text>
           <View style={{ width: 22 }} />
         </View>
 
@@ -95,7 +96,7 @@ export default function ReportScreen() {
 
         {/* Summary card */}
         <View style={[styles.summaryCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
-          <Text style={styles.summaryLabel}>Total spent</Text>
+          <Text style={styles.summaryLabel}>{t("totalSpent")}</Text>
           <Text style={styles.summaryAmount}>
             ${summary.totalCurrentMonth.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </Text>
@@ -107,12 +108,7 @@ export default function ReportScreen() {
 
         {/* Key stats */}
         <View style={styles.statsGrid}>
-          {[
-            { label: "Top category", value: summary.topCategory ? getCategoryLabel(summary.topCategory) : "—" },
-            { label: "Daily average", value: `$${summary.averageDaily.toFixed(0)}` },
-            { label: "Weekend total", value: `$${summary.weekendTotal.toFixed(0)}` },
-            { label: "Small purchases", value: `${summary.smallPurchasesPercent.toFixed(0)}%` },
-          ].map((s) => (
+          {STATS.map((s) => (
             <View key={s.label} style={[styles.statBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
               <Text style={[styles.statLabel, { color: col.mutedForeground }]}>{s.label}</Text>
               <Text style={[styles.statValue, { color: col.foreground }]}>{s.value}</Text>
@@ -123,10 +119,10 @@ export default function ReportScreen() {
         {/* Budget status */}
         {userProfile && (
           <View style={[styles.budgetBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
-            <Text style={[styles.boxTitle, { color: col.foreground }]}>Budget status</Text>
+            <Text style={[styles.boxTitle, { color: col.foreground }]}>{t("monthlyBudget")}</Text>
             <View style={styles.budgetRow}>
               <Text style={[styles.budgetStat, { color: col.foreground }]}>${summary.totalCurrentMonth.toFixed(0)}</Text>
-              <Text style={[styles.budgetOf, { color: col.mutedForeground }]}>of ${userProfile.monthlyBudget.toFixed(0)} budget</Text>
+              <Text style={[styles.budgetOf, { color: col.mutedForeground }]}>{t("of")} ${userProfile.monthlyBudget.toFixed(0)} {t("budget")}</Text>
             </View>
             <View style={[styles.budgetTrack, { backgroundColor: col.muted }]}>
               <View
@@ -138,26 +134,11 @@ export default function ReportScreen() {
             </View>
             <Text style={[styles.budgetStatus, { color: summary.totalCurrentMonth > userProfile.monthlyBudget ? col.destructive : col.success }]}>
               {summary.totalCurrentMonth > userProfile.monthlyBudget
-                ? `Over budget by $${(summary.totalCurrentMonth - userProfile.monthlyBudget).toFixed(0)}`
-                : `$${(userProfile.monthlyBudget - summary.totalCurrentMonth).toFixed(0)} under budget`}
+                ? `${t("exceedsBudget")}`
+                : `${t("withinBudget")}`}
             </Text>
           </View>
         )}
-
-        {/* Recommendation */}
-        <View style={[styles.recBox, { backgroundColor: col.secondary, borderColor: col.primary + "40", borderRadius: colors.radius }]}>
-          <Feather name="zap" size={18} color={col.primary} style={{ marginBottom: 8 }} />
-          <Text style={[styles.recTitle, { color: col.foreground }]}>Recommendation</Text>
-          <Text style={[styles.recText, { color: col.mutedForeground }]}>
-            {summary.percentChange > 10
-              ? `Your spending increased significantly this month. Focus on reducing ${summary.topCategory ? getCategoryLabel(summary.topCategory).toLowerCase() : "your top category"} expenses next month.`
-              : summary.percentChange < -5
-              ? `Great job cutting spending this month! Keep tracking your ${summary.topCategory ? getCategoryLabel(summary.topCategory).toLowerCase() : ""} expenses to maintain the trend.`
-              : summary.smallPurchasesPercent > 20
-              ? `Small purchases made up ${summary.smallPurchasesPercent.toFixed(0)}% of your spending. Try grouping errands to reduce the number of small transactions.`
-              : `You're spending a balanced amount. Continue monitoring your ${summary.topCategory ? getCategoryLabel(summary.topCategory).toLowerCase() : ""} category as it's your biggest expense.`}
-          </Text>
-        </View>
 
         {/* Export button */}
         <TouchableOpacity
@@ -170,7 +151,7 @@ export default function ReportScreen() {
           ) : (
             <>
               <Feather name="file-text" size={18} color="#fff" />
-              <Text style={styles.exportBtnText}>Export Monthly Report as PDF</Text>
+              <Text style={styles.exportBtnText}>{t("exportReport")}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -191,12 +172,10 @@ const styles = StyleSheet.create({
   summaryBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   summaryBadgeText: { fontSize: 13, fontWeight: "600" },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 },
-  statBox: { width: "47.5%", padding: 16, borderWidth: 1,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
+  statBox: { width: "47.5%", padding: 16, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
   statLabel: { fontSize: 12, marginBottom: 4 },
   statValue: { fontSize: 20, fontWeight: "700" },
-  budgetBox: { padding: 16, marginBottom: 12, borderWidth: 1,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
+  budgetBox: { padding: 16, marginBottom: 12, borderWidth: 1, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
   boxTitle: { fontSize: 15, fontWeight: "700", marginBottom: 10 },
   budgetRow: { flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 10 },
   budgetStat: { fontSize: 24, fontWeight: "800" },
@@ -204,9 +183,6 @@ const styles = StyleSheet.create({
   budgetTrack: { height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 6 },
   budgetFill: { height: "100%", borderRadius: 3 },
   budgetStatus: { fontSize: 13, fontWeight: "600" },
-  recBox: { padding: 18, borderWidth: 1, marginBottom: 16 },
-  recTitle: { fontSize: 15, fontWeight: "700", marginBottom: 8 },
-  recText: { fontSize: 14, lineHeight: 20 },
   exportBtn: { height: 56, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10 },
   exportBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });
