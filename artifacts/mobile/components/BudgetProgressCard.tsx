@@ -5,6 +5,7 @@ import { CategoryIcon, getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
 import type { LanguageCode } from "@/constants/translations";
 import type { Category } from "@/context/AppContext";
+import { getCountryByCode } from "@/constants/translations";
 import { useColors } from "@/hooks/useColors";
 
 interface Props {
@@ -12,14 +13,16 @@ interface Props {
   budgetAmount: number;
   spentAmount: number;
   language?: LanguageCode;
+  countryCode?: string;
 }
 
-export function BudgetProgressCard({ category, budgetAmount, spentAmount, language = "en" }: Props) {
+export function BudgetProgressCard({ category, budgetAmount, spentAmount, language = "en", countryCode }: Props) {
   const col = useColors();
   const pct = budgetAmount > 0 ? Math.min(spentAmount / budgetAmount, 1) : 0;
   const remaining = Math.max(budgetAmount - spentAmount, 0);
   const isOver = spentAmount > budgetAmount;
   const isWarning = pct >= 0.8 && !isOver;
+  const currency = getCountryByCode(countryCode).symbol;
 
   const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -28,14 +31,15 @@ export function BudgetProgressCard({ category, budgetAmount, spentAmount, langua
 
   const barColor = isOver ? col.destructive : isWarning ? col.warning : col.primary;
   const barWidth = anim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
+  const currency = getCountryByCode(countryCode).symbol;
 
   const statusText = language === "ar"
     ? isOver
-      ? `${(spentAmount - budgetAmount).toFixed(0)}$ تجاوز الميزانية`
-      : `${remaining.toFixed(0)}$ متبقي · ${Math.round(pct * 100)}% مُستخدم`
+      ? `${currency}${(spentAmount - budgetAmount).toFixed(0)} تجاوز الميزانية`
+      : `${currency}${remaining.toFixed(0)} متبقي · ${Math.round(pct * 100)}% مُستخدم`
     : isOver
-      ? `$${(spentAmount - budgetAmount).toFixed(0)} over budget`
-      : `$${remaining.toFixed(0)} remaining · ${Math.round(pct * 100)}% used`;
+      ? `${currency}${(spentAmount - budgetAmount).toFixed(0)} over budget`
+      : `${currency}${remaining.toFixed(0)} remaining · ${Math.round(pct * 100)}% used`;
 
   return (
     <View
@@ -54,8 +58,8 @@ export function BudgetProgressCard({ category, budgetAmount, spentAmount, langua
           <Text style={[styles.label, { color: col.foreground }]}>{getCategoryLabel(category, language)}</Text>
         </View>
         <View style={styles.amounts}>
-          <Text style={[styles.spent, { color: col.foreground }]}>${spentAmount.toFixed(0)}</Text>
-          <Text style={[styles.budget, { color: col.mutedForeground }]}>/ ${budgetAmount.toFixed(0)}</Text>
+          <Text style={[styles.spent, { color: col.foreground }]}>{currency}{spentAmount.toFixed(0)}</Text>
+          <Text style={[styles.budget, { color: col.mutedForeground }]}>{currency}{budgetAmount.toFixed(0)}</Text>
         </View>
       </View>
 

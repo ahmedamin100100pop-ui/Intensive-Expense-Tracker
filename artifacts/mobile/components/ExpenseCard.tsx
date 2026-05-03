@@ -5,6 +5,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { CategoryIcon, getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
+import { getCountryByCode } from "@/constants/translations";
 import type { Expense } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
@@ -25,11 +26,12 @@ const INCOME_BG = "#ECFDF5";
 
 export function ExpenseCard({ expense, onDelete, index = 0 }: Props) {
   const col = useColors();
-  const { t, language } = useLanguage();
+  const { t, language, userProfile } = useLanguage() as any;
   const isIncome = !!expense.isIncome;
   const locale = language === "ar" ? "ar-SA" : "en-US";
+  const currency = getCountryByCode(userProfile?.countryCode).symbol;
   const displayLabel = isIncome ? (expense.customLabel ?? t("income")) : getCategoryLabel(expense.category, language);
-  const amountText = isIncome ? `+$${expense.amount.toFixed(2)}` : `$${expense.amount.toFixed(2)}`;
+  const amountText = isIncome ? `+${currency}${expense.amount.toFixed(2)}` : `${currency}${expense.amount.toFixed(2)}`;
   const amountColor = isIncome ? INCOME_COLOR : col.foreground;
 
   return (

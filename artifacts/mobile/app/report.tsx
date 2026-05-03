@@ -20,6 +20,7 @@ import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 import { generateAndSharePDF } from "@/utils/generatePDF";
+import { getCountryByCode } from "@/constants/translations";
 
 export default function ReportScreen() {
   const col = useColors();
@@ -41,6 +42,7 @@ export default function ReportScreen() {
   })();
 
   const pct = summary.percentChange;
+  const currency = getCountryByCode(userProfile?.countryCode).symbol;
   const pctLabel = pct >= 0
     ? `${pct.toFixed(0)}% ${t("vs")} ${prevMonthName}`
     : `${Math.abs(pct).toFixed(0)}% ${t("vs")} ${prevMonthName}`;
@@ -72,8 +74,8 @@ export default function ReportScreen() {
 
   const STATS = [
     { label: t("topCategory"),    value: topCatLabel },
-    { label: t("dailyAverage"),   value: `$${summary.averageDaily.toFixed(0)}` },
-    { label: t("weekends"),       value: `$${summary.weekendTotal.toFixed(0)}` },
+    { label: t("dailyAverage"),   value: `${currency}${summary.averageDaily.toFixed(0)}` },
+    { label: t("weekends"),       value: `${currency}${summary.weekendTotal.toFixed(0)}` },
     { label: t("tabInsights"),    value: `${summary.smallPurchasesPercent.toFixed(0)}%` },
   ];
 
@@ -98,7 +100,7 @@ export default function ReportScreen() {
         <View style={[styles.summaryCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
           <Text style={styles.summaryLabel}>{t("totalSpent")}</Text>
           <Text style={styles.summaryAmount}>
-            ${summary.totalCurrentMonth.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            ${currency}${summary.totalCurrentMonth.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </Text>
           <View style={[styles.summaryBadge, { backgroundColor: pct > 0 ? "rgba(251,191,36,0.2)" : "rgba(16,185,129,0.2)" }]}>
             <Feather name={pct > 0 ? "trending-up" : "trending-down"} size={14} color={pct > 0 ? "#FBBF24" : "#6EE7B7"} />
@@ -121,8 +123,8 @@ export default function ReportScreen() {
           <View style={[styles.budgetBox, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
             <Text style={[styles.boxTitle, { color: col.foreground }]}>{t("monthlyBudget")}</Text>
             <View style={styles.budgetRow}>
-              <Text style={[styles.budgetStat, { color: col.foreground }]}>${summary.totalCurrentMonth.toFixed(0)}</Text>
-              <Text style={[styles.budgetOf, { color: col.mutedForeground }]}>{t("of")} ${userProfile.monthlyBudget.toFixed(0)} {t("budget")}</Text>
+              <Text style={[styles.budgetStat, { color: col.foreground }]}>{currency}{summary.totalCurrentMonth.toFixed(0)}</Text>
+              <Text style={[styles.budgetOf, { color: col.mutedForeground }]}>{t("of")} {currency}{userProfile.monthlyBudget.toFixed(0)} {t("budget")}</Text>
             </View>
             <View style={[styles.budgetTrack, { backgroundColor: col.muted }]}>
               <View

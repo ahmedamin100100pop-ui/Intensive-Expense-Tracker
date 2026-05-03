@@ -8,7 +8,7 @@ import { CategoryIcon, getCategoryLabel } from "@/components/CategoryIcon";
 import { DashboardCard } from "@/components/DashboardCard";
 import { ExpenseCard } from "@/components/ExpenseCard";
 import colors from "@/constants/colors";
-import type { TranslationKeys } from "@/constants/translations";
+import { getCountryByCode, type TranslationKeys } from "@/constants/translations";
 import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
@@ -43,7 +43,7 @@ export default function HomeScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
   const personalityLabel = summary.moneyPersonality ? t(PERSONALITY_KEY[summary.moneyPersonality] ?? "personalityBalanced") : "";
-  const currency = userProfile?.countryCode ? ({ us: "$", sd: "ج.س", pk: "Rs", sa: "ر.س", ae: "د.إ", eg: "ج.م", in: "₹", qa: "ر.ق", om: "ر.ع.", gb: "£" } as Record<string, string>)[userProfile.countryCode] ?? "$" : "$";
+  const currency = getCountryByCode(userProfile?.countryCode).symbol;
 
   return (<View style={[styles.root, { backgroundColor: col.background }]}><ScrollView contentContainerStyle={[styles.scroll, { paddingTop: topPad + 16, paddingBottom: botPad + 90 }]} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={col.primary} />}><View style={styles.header}><View><Text style={[styles.greeting, { color: col.mutedForeground }]}>{userProfile?.name ? `${t("goodMorning")}, ${userProfile.name.split(" ")[0]}` : t("goodMorning")}</Text><Text style={[styles.monthLabel, { color: col.foreground }]}>{new Date().toLocaleDateString(locale, { month: "long", year: "numeric" })}</Text></View><View style={styles.headerActions}><TouchableOpacity onPress={() => router.push("/report")} style={[styles.headerBtn, { backgroundColor: col.secondary }]}><Feather name="bar-chart-2" size={16} color={col.primary} /></TouchableOpacity><TouchableOpacity onPress={() => router.push("/settings")} style={[styles.headerBtn, { backgroundColor: col.secondary }]}><Feather name="settings" size={16} color={col.primary} /></TouchableOpacity></View></View>
 
