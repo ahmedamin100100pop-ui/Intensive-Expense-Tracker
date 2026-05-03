@@ -2,10 +2,44 @@ export type LanguageCode = "en" | "ar";
 
 export const LANGUAGES: { code: LanguageCode; label: string; nativeLabel: string }[] = [
   { code: "en", label: "English", nativeLabel: "English" },
-  { code: "ar", label: "Arabic",  nativeLabel: "العربية" },
+  { code: "ar", label: "Arabic", nativeLabel: "العربية" },
 ];
 
-// ── Category labels ────────────────────────────────────────────────────────────
+export type CurrencyCode = "usd" | "sar" | "egp" | "gbp" | "aed" | "sdg" | "pkr" | "inr" | "qar" | "omr";
+
+export interface CountryOption {
+  code: string;
+  name: string;
+  nativeName: string;
+  currency: CurrencyCode;
+  symbol: string;
+  icon: string;
+}
+
+export const COUNTRIES: CountryOption[] = [
+  { code: "us", name: "United States", nativeName: "United States", currency: "usd", symbol: "$", icon: "flag-usa" },
+  { code: "sa", name: "Saudi Arabia", nativeName: "السعودية", currency: "sar", symbol: "ر.س", icon: "flag" },
+  { code: "ae", name: "United Arab Emirates", nativeName: "الإمارات", currency: "aed", symbol: "د.إ", icon: "flag" },
+  { code: "gb", name: "United Kingdom", nativeName: "United Kingdom", currency: "gbp", symbol: "£", icon: "flag-variant" },
+  { code: "eg", name: "Egypt", nativeName: "مصر", currency: "egp", symbol: "ج.م", icon: "flag" },
+  { code: "sd", name: "Sudan", nativeName: "السودان", currency: "sdg", symbol: "ج.س", icon: "flag" },
+  { code: "pk", name: "Pakistan", nativeName: "پاکستان", currency: "pkr", symbol: "Rs", icon: "flag" },
+  { code: "in", name: "India", nativeName: "भारत", currency: "inr", symbol: "₹", icon: "flag" },
+  { code: "qa", name: "Qatar", nativeName: "قطر", currency: "qar", symbol: "ر.ق", icon: "flag" },
+  { code: "om", name: "Oman", nativeName: "عُمان", currency: "omr", symbol: "ر.ع.", icon: "flag" },
+];
+
+const COUNTRY_TO_CURRENCY: Record<string, CountryOption> = Object.fromEntries(COUNTRIES.map((c) => [c.code, c])) as Record<string, CountryOption>;
+
+export function getCountryByCode(code?: string | null): CountryOption {
+  if (code && COUNTRY_TO_CURRENCY[code]) return COUNTRY_TO_CURRENCY[code];
+  return COUNTRIES[0];
+}
+
+export function getCurrencySymbolForCountry(code?: string | null): string {
+  return getCountryByCode(code).symbol;
+}
+
 const CATEGORY_LABELS: Record<LanguageCode, Record<string, string>> = {
   en: {
     food: "Food", transport: "Transport", shopping: "Shopping",
@@ -31,19 +65,15 @@ export function getCategoryLabelForLang(category: string, lang: LanguageCode = "
   return CATEGORY_LABELS[lang]?.[category] ?? CATEGORY_LABELS.en[category] ?? category;
 }
 
-// ── Main UI translations ───────────────────────────────────────────────────────
 export type TranslationKeys = typeof translations.en;
 
 export const translations = {
   en: {
-    // Tab labels
     tabHome: "Home",
     tabAnalytics: "Analytics",
     tabAdd: "Add",
     tabInsights: "Insights",
     tabBudget: "Budget",
-
-    // Common
     cancel: "Cancel",
     save: "Save",
     continue: "Continue",
@@ -61,11 +91,13 @@ export const translations = {
     of: "of",
     vs: "vs",
     perDay: "per day",
-
-    // Onboarding
     whatsYourName: "What's your name?",
     reportsPersonalized: "Your reports will be personalized with your name",
     yourName: "Your name",
+    whatsYourCountry: "What's your country?",
+    chooseYourCountry: "Choose your country",
+    countrySubtitle: "We'll show the right currency based on your country",
+    selectCountry: "Select country",
     whatsYourIncome: "What's your monthly income?",
     helpPlanBudget: "We'll use this to help you plan your budget",
     monthlyLimit: "Monthly spending limit?",
@@ -73,8 +105,6 @@ export const translations = {
     budgetHigherThanIncome: "Budget is higher than income — are you sure?",
     whatsYourGoal: "What's your main goal?",
     tailorInsights: "We'll tailor insights and tips for you",
-
-    // Goals
     goalUnderstand: "Understand my spending",
     goalUnderstandDesc: "See where your money really goes",
     goalSave: "Save more money",
@@ -85,8 +115,6 @@ export const translations = {
     goalControlShoppingDesc: "Spend smarter on purchases",
     goalTrackBudget: "Track monthly budget",
     goalTrackBudgetDesc: "Stay within your spending limit",
-
-    // Home
     goodMorning: "Good morning",
     totalSpentThisMonth: "Total spent this month",
     incomeLabel: "Income",
@@ -104,16 +132,12 @@ export const translations = {
     tapToAddFirst: "Tap + to add your first one",
     pctVsLastMonth_more: "+{pct}% vs last month",
     pctVsLastMonth_less: "{pct}% vs last month",
-
-    // Money personalities
     personalityBalanced: "Balanced Spender",
     personalityWeekend: "Weekend Spender",
     personalityFood: "Food Lover",
     personalityImpulse: "Impulse Shopper",
     personalitySmall: "Small Purchases Collector",
     personalityCareful: "Careful Planner",
-
-    // Add transaction
     addTransaction: "Add Transaction",
     expense: "Expense",
     amountReceived: "Amount received",
@@ -134,8 +158,6 @@ export const translations = {
     saveIncome: "Save income",
     saveExpense: "Save expense",
     savedBang: "Saved!",
-
-    // Analytics
     analytics: "Analytics",
     exportPDF: "Export PDF",
     day: "Day",
@@ -155,13 +177,10 @@ export const translations = {
     noExpensesToExport: "There are no expenses in this period to export.",
     exportFailed: "Export failed",
     couldNotGeneratePDF: "Could not generate the PDF. Please try again.",
-
-    // Insights
     insights: "Insights",
     behaviorAnalysis: "Behavior-based analysis of your spending",
     noInsightsYet: "No insights yet",
     addExpensesToStart: "Add some expenses to get started",
-    // Dynamic insight strings
     insightTopCatTitle: "{category} is your top category",
     insightTopCatDesc: "You've spent ${amount} on {category} this month — more than any other category.",
     insightSpendingUpTitle: "Spending up {pct}% this month",
@@ -192,15 +211,11 @@ export const translations = {
     insightDailyDescOver: "At this pace, you'll spend roughly ${projected} this month. This exceeds your monthly budget.",
     withinBudget: "That's within your budget.",
     exceedsBudget: "This exceeds your monthly budget.",
-
-    // Budget
     monthlyBudget: "Monthly budget",
     categoryBudgets: "Category budgets",
     tapToEdit: "Tap to edit",
     addMoreBudgets: "Add more budgets",
     budgetModal: "{category} budget",
-
-    // Settings
     settings: "Settings",
     profile: "Profile",
     name: "Name",
@@ -234,8 +249,6 @@ export const translations = {
     restartRequiredTitle: "Restart required",
     restartRequiredMsg: "The app will restart to apply the language and layout change.",
     version: "Intensive v1.0.0",
-
-    // Report
     report: "Monthly Report",
     reportSub: "Summary for {month}",
     exportReport: "Export PDF",
@@ -248,222 +261,9 @@ export const translations = {
     noData2: "No data this month",
     noUnusual: "No unusually high transactions this month",
   },
-
-  ar: {
-    // Tab labels
-    tabHome: "الرئيسية",
-    tabAnalytics: "التحليلات",
-    tabAdd: "إضافة",
-    tabInsights: "رؤى",
-    tabBudget: "الميزانية",
-
-    // Common
-    cancel: "إلغاء",
-    save: "حفظ",
-    continue: "متابعة",
-    getStarted: "ابدأ الآن",
-    delete: "حذف",
-    ok: "موافق",
-    seeAll: "عرض الكل",
-    noData: "—",
-    income: "دخل",
-    expenses: "مصروفات",
-    budget: "الميزانية",
-    spent: "المصروف",
-    left: "متبقي",
-    total: "الإجمالي",
-    of: "من",
-    vs: "مقابل",
-    perDay: "يومياً",
-
-    // Onboarding
-    whatsYourName: "ما اسمك؟",
-    reportsPersonalized: "ستُخصَّص تقاريرك باسمك",
-    yourName: "اسمك",
-    whatsYourIncome: "ما هو دخلك الشهري؟",
-    helpPlanBudget: "سنستخدم هذا لمساعدتك في تخطيط ميزانيتك",
-    monthlyLimit: "حد الإنفاق الشهري؟",
-    setABudget: "حدد ميزانية لتتبع ما إذا كنت على المسار الصحيح",
-    budgetHigherThanIncome: "الميزانية أعلى من الدخل — هل أنت متأكد؟",
-    whatsYourGoal: "ما هو هدفك الرئيسي؟",
-    tailorInsights: "سنخصص الرؤى والنصائح لك",
-
-    // Goals
-    goalUnderstand: "فهم إنفاقي",
-    goalUnderstandDesc: "اعرف أين يذهب مالك فعلاً",
-    goalSave: "ادخار المزيد",
-    goalSaveDesc: "بناء عادات ادخار صحية",
-    goalReduceFood: "تقليل مصروفات الطعام",
-    goalReduceFoodDesc: "تقليل مصاريف الطعام والبقالة",
-    goalControlShopping: "التحكم في التسوق",
-    goalControlShoppingDesc: "إنفاق أذكى على المشتريات",
-    goalTrackBudget: "تتبع الميزانية الشهرية",
-    goalTrackBudgetDesc: "البقاء ضمن حد الإنفاق الخاص بك",
-
-    // Home
-    goodMorning: "صباح الخير",
-    totalSpentThisMonth: "إجمالي المصروف هذا الشهر",
-    incomeLabel: "الدخل",
-    spentLabel: "المصروف",
-    usedPct: "% مُستخدم",
-    budgetRemaining: "متبقي",
-    topCategory: "أكثر فئة إنفاقاً",
-    dailyAverage: "المتوسط اليومي",
-    daysIn: "يوم",
-    moneyPersonality: "شخصيتك المالية",
-    weekdays: "أيام العمل",
-    weekends: "عطلة نهاية الأسبوع",
-    recentTransactions: "المعاملات الأخيرة",
-    noTransactionsThisMonth: "لا توجد معاملات هذا الشهر",
-    tapToAddFirst: "اضغط + لإضافة أول معاملة",
-    pctVsLastMonth_more: "+{pct}% مقارنة بالشهر الماضي",
-    pctVsLastMonth_less: "{pct}% مقارنة بالشهر الماضي",
-
-    // Money personalities
-    personalityBalanced: "منفق متوازن",
-    personalityWeekend: "منفق في العطلة",
-    personalityFood: "محب الطعام",
-    personalityImpulse: "متسوق متهور",
-    personalitySmall: "جامع المشتريات الصغيرة",
-    personalityCareful: "مخطط حذر",
-
-    // Add transaction
-    addTransaction: "إضافة معاملة",
-    expense: "مصروف",
-    amountReceived: "المبلغ المستلم",
-    amountSpent: "المبلغ المصروف",
-    incomeType: "نوع الدخل",
-    category: "الفئة",
-    customTypeName: "اسم النوع المخصص",
-    customTypePlaceholder: "مثال: مصاريف الحيوانات، هوايات...",
-    chooseAnIcon: "اختر أيقونة",
-    paymentMethod: "طريقة الدفع",
-    cash: "نقد",
-    card: "بطاقة",
-    bank: "بنك",
-    wallet: "محفظة",
-    date: "التاريخ",
-    noteOptional: "ملاحظة (اختياري)",
-    noteplaceholder: "ما الغرض من هذه المعاملة؟",
-    saveIncome: "حفظ الدخل",
-    saveExpense: "حفظ المصروف",
-    savedBang: "تم الحفظ!",
-
-    // Analytics
-    analytics: "التحليلات",
-    exportPDF: "تصدير PDF",
-    day: "يوم",
-    month: "شهر",
-    year: "سنة",
-    spentOnThisDay: "المصروف في هذا اليوم",
-    spentThisMonth: "المصروف هذا الشهر",
-    spentThisYear: "المصروف هذا العام",
-    transaction: "معاملة",
-    transactions: "معاملات",
-    noExpensesInPeriod: "لا توجد مصروفات في هذه الفترة",
-    spendingByCategory: "الإنفاق حسب الفئة",
-    dailySpending: "الإنفاق اليومي",
-    monthlySpending: "الإنفاق الشهري",
-    categoryComparison: "مقارنة الفئات",
-    fullBreakdown: "التفاصيل الكاملة",
-    noExpensesToExport: "لا توجد مصروفات في هذه الفترة للتصدير.",
-    exportFailed: "فشل التصدير",
-    couldNotGeneratePDF: "تعذر إنشاء ملف PDF. يرجى المحاولة مرة أخرى.",
-
-    // Insights
-    insights: "رؤى",
-    behaviorAnalysis: "تحليل سلوكي لإنفاقك",
-    noInsightsYet: "لا توجد رؤى بعد",
-    addExpensesToStart: "أضف بعض المصروفات للبدء",
-    insightTopCatTitle: "{category} هي فئتك الأكثر إنفاقاً",
-    insightTopCatDesc: "لقد أنفقت {amount}$ على {category} هذا الشهر — أكثر من أي فئة أخرى.",
-    insightSpendingUpTitle: "الإنفاق ارتفع {pct}% هذا الشهر",
-    insightSpendingDownTitle: "الإنفاق انخفض {pct}% مقارنة بالشهر الماضي",
-    insightSpendingUpDesc: "أنفقت {curr}$ حتى الآن مقابل {prev}$ الشهر الماضي. كن حذراً.",
-    insightSpendingDownDesc: "أخبار رائعة — إنفاقك أقل من الشهر الماضي. أنفقت {curr}$ مقابل {prev}$ الشهر الماضي.",
-    insightWeekendTitle: "تنفق أكثر في عطلات نهاية الأسبوع",
-    insightWeekendDesc: "إنفاقك في عطلة نهاية الأسبوع {weekend}$ مقابل {weekday}$ في أيام العمل. معظم إنفاقك التقديري يحدث في العطلة.",
-    insightSmallTitle: "المشتريات الصغيرة تتراكم",
-    insightSmallDesc: "المشتريات التي تقل عن 10$ بلغت {total}$ — {pct}% من إنفاقك. غالباً ما تمر دون ملاحظة.",
-    insightUnusualTitle: "مصروف كبير غير معتاد",
-    insightUnusualTitlePlural: "{count} مصروفات كبيرة غير معتادة",
-    insightUnusualDesc: "لديك {desc} أعلى بكثير من متوسطك: {items}.",
-    insightUnusualDescOne: "مصروف",
-    insightUnusualDescMany: "عدة مصروفات",
-    insightOverBudgetTitle: "تجاوزت ميزانيتك الشهرية",
-    insightOverBudgetDesc: "إنفاقك {spent}$ تجاوز ميزانيتك {budget}$ بمقدار {over}$.",
-    insightNearBudgetTitle: "تقترب من ميزانيتك الشهرية",
-    insightNearBudgetDesc: "استخدمت {pct}% من ميزانيتك الشهرية. تبقى {left}$ فقط.",
-    insightOnTrackTitle: "أداؤك جيد هذا الشهر",
-    insightOnTrackDesc: "أنفقت {spent}$ من ميزانيتك {budget}$ في منتصف الشهر. استمر هكذا.",
-    insightCatOverTitle: "تجاوزت ميزانية {category}",
-    insightCatOverDesc: "أنفقت {spent}$ على {category}، وهو {over}$ فوق حدك {limit}$.",
-    insightCatWarnTitle: "{category} وصلت إلى {pct}% من الميزانية",
-    insightCatWarnDesc: "أنفقت {spent}$ من ميزانية {category} البالغة {limit}$.",
-    insightDailyTitle: "تنفق {avg}$ يومياً في المتوسط",
-    insightDailyDescOk: "بهذا المعدل، ستنفق حوالي {projected}$ هذا الشهر. هذا ضمن ميزانيتك.",
-    insightDailyDescOver: "بهذا المعدل، ستنفق حوالي {projected}$ هذا الشهر. هذا يتجاوز ميزانيتك الشهرية.",
-    withinBudget: "هذا ضمن ميزانيتك.",
-    exceedsBudget: "هذا يتجاوز ميزانيتك الشهرية.",
-
-    // Budget
-    monthlyBudget: "الميزانية الشهرية",
-    categoryBudgets: "ميزانية الفئات",
-    tapToEdit: "اضغط للتعديل",
-    addMoreBudgets: "إضافة ميزانيات",
-    budgetModal: "ميزانية {category}",
-
-    // Settings
-    settings: "الإعدادات",
-    profile: "الملف الشخصي",
-    name: "الاسم",
-    monthlyIncome: "الدخل الشهري",
-    yourData: "بياناتك",
-    backupSize: "حجم النسخة",
-    backupRestore: "النسخ الاحتياطي والاستعادة",
-    exportBackup: "تصدير النسخة الاحتياطية",
-    exportBackupSub: "حفظ ملف JSON بجميع بياناتك",
-    importBackup: "استيراد النسخة الاحتياطية",
-    importBackupSub: "استعادة البيانات من ملف النسخة الاحتياطية",
-    howBackupWorks: "كيف يعمل النسخ الاحتياطي: ",
-    howBackupWorksText: "يحفظ التصدير ملف .json على جهازك (أو يتيح لك مشاركته عبر البريد الإلكتروني وغيره). للاستعادة، افتح التطبيق واضغط استيراد ثم اختر الملف.",
-    dangerZone: "منطقة الخطر",
-    clearAllData: "مسح جميع البيانات",
-    clearAllDataSub: "حذف كل شيء بشكل دائم والبدء من جديد",
-    clearAllDataConfirmTitle: "مسح جميع البيانات",
-    clearAllDataConfirmMsg: "سيؤدي هذا إلى حذف جميع مصروفاتك وملفك الشخصي وإعداداتك بشكل دائم. لا يمكن التراجع عن هذا.\n\nنوصي بتصدير نسخة احتياطية أولاً.",
-    deleteEverything: "حذف كل شيء",
-    importConfirmTitle: "استيراد النسخة الاحتياطية",
-    importConfirmMsg: "سيستبدل هذا جميع بياناتك الحالية بمحتويات ملف النسخة الاحتياطية. هل تريد المتابعة؟",
-    importBtnLabel: "استيراد",
-    importSuccessTitle: "تم الاستيراد بنجاح",
-    importSuccessMsg: "تمت استعادة {count} معاملة من نسخة احتياطية بتاريخ {date}.",
-    importSuccessMsgPlural: "تمت استعادة {count} معاملة من نسخة احتياطية بتاريخ {date}.",
-    exportFailedTitle: "فشل التصدير",
-    importFailedTitle: "فشل الاستيراد",
-    saveChanges: "حفظ التغييرات",
-    language: "اللغة",
-    appLanguage: "لغة التطبيق",
-    restartRequiredTitle: "إعادة التشغيل مطلوبة",
-    restartRequiredMsg: "سيُعاد تشغيل التطبيق لتطبيق تغييرات اللغة والتخطيط.",
-    version: "Intensive v1.0.0",
-
-    // Report
-    report: "التقرير الشهري",
-    reportSub: "ملخص لشهر {month}",
-    exportReport: "تصدير PDF",
-    totalSpent: "إجمالي المصروف",
-    avgPerDay: "المتوسط اليومي",
-    transactions2: "المعاملات",
-    vsLastMonth: "مقارنة بالشهر الماضي",
-    topSpending: "أكثر الفئات إنفاقاً",
-    unusualSpend: "الإنفاق غير المعتاد",
-    noData2: "لا توجد بيانات هذا الشهر",
-    noUnusual: "لا توجد معاملات مرتفعة بشكل غير معتاد هذا الشهر",
-  },
+  ar: { tabHome: "الرئيسية", tabAnalytics: "التحليلات", tabAdd: "إضافة", tabInsights: "رؤى", tabBudget: "الميزانية", cancel: "إلغاء", save: "حفظ", continue: "متابعة", getStarted: "ابدأ الآن", delete: "حذف", ok: "موافق", seeAll: "عرض الكل", noData: "—", income: "الدخل", expenses: "المصروفات", budget: "الميزانية", spent: "المصروف", left: "متبقي", total: "الإجمالي", of: "من", vs: "مقارنةً بـ", perDay: "يوميًا", whatsYourName: "ما اسمك؟", reportsPersonalized: "سيتم تخصيص التقارير باسمك", yourName: "اسمك", whatsYourCountry: "ما بلدك؟", chooseYourCountry: "اختر بلدك", countrySubtitle: "سنعرض العملة المناسبة حسب بلدك", selectCountry: "اختر البلد", whatsYourIncome: "ما دخلك الشهري؟", helpPlanBudget: "سنستخدمه لمساعدتك في تخطيط ميزانيتك", monthlyLimit: "حد الإنفاق الشهري؟", setABudget: "ضع ميزانية لمعرفة إن كنت على المسار الصحيح", budgetHigherThanIncome: "الميزانية أعلى من الدخل — هل أنت متأكد؟", whatsYourGoal: "ما هدفك الرئيسي؟", tailorInsights: "سنخصص لك الرؤى والنصائح", goalUnderstand: "فهم إنفاقي", goalUnderstandDesc: "اعرف أين يذهب مالك بالفعل", goalSave: "ادخار المزيد", goalSaveDesc: "ابنِ عادات ادخار صحية", goalReduceFood: "تقليل مصروف الطعام", goalReduceFoodDesc: "خفف من المطاعم والبقالة", goalControlShopping: "التحكم في التسوق", goalControlShoppingDesc: "أنفق بذكاء على المشتريات", goalTrackBudget: "متابعة الميزانية الشهرية", goalTrackBudgetDesc: "ابقَ ضمن حد الإنفاق", goodMorning: "صباح الخير", totalSpentThisMonth: "إجمالي ما تم إنفاقه هذا الشهر", incomeLabel: "الدخل", spentLabel: "المصروف", usedPct: "% مستخدم", budgetRemaining: "متبقي", topCategory: "أعلى فئة", dailyAverage: "المتوسط اليومي", daysIn: "أيام في", moneyPersonality: "شخصية الإنفاق لديك", weekdays: "أيام الأسبوع", weekends: "نهاية الأسبوع", recentTransactions: "آخر العمليات", noTransactionsThisMonth: "لا توجد عمليات هذا الشهر", tapToAddFirst: "اضغط + لإضافة أول عملية", pctVsLastMonth_more: "+{pct}% مقارنةً بالشهر الماضي", pctVsLastMonth_less: "{pct}% مقارنةً بالشهر الماضي", personalityBalanced: "منفق متوازن", personalityWeekend: "منفق عطلة نهاية الأسبوع", personalityFood: "محب للطعام", personalityImpulse: "مشتري اندفاعي", personalitySmall: "جامع المشتريات الصغيرة", personalityCareful: "مخطط حذر", addTransaction: "إضافة عملية", expense: "مصروف", amountReceived: "المبلغ المستلم", amountSpent: "المبلغ المصروف", incomeType: "نوع الدخل", category: "الفئة", customTypeName: "اسم مخصص", customTypePlaceholder: "مثال: مصروفات الحيوانات، الهوايات…", chooseAnIcon: "اختر رمزًا", paymentMethod: "طريقة الدفع", cash: "نقدًا", card: "بطاقة", bank: "بنك", wallet: "محفظة", date: "التاريخ", noteOptional: "ملاحظة (اختياري)", noteplaceholder: "لِمَ كان هذا؟", saveIncome: "حفظ الدخل", saveExpense: "حفظ المصروف", savedBang: "تم الحفظ!", analytics: "التحليلات", exportPDF: "تصدير PDF", day: "يوم", month: "شهر", year: "سنة", spentOnThisDay: "تم الإنفاق في هذا اليوم", spentThisMonth: "تم الإنفاق هذا الشهر", spentThisYear: "تم الإنفاق هذا العام", transaction: "عملية", transactions: "عمليات", noExpensesInPeriod: "لا توجد مصروفات في هذه الفترة", spendingByCategory: "الإنفاق حسب الفئة", dailySpending: "الإنفاق اليومي", monthlySpending: "الإنفاق الشهري", categoryComparison: "مقارنة الفئات", fullBreakdown: "تفصيل كامل", noExpensesToExport: "لا توجد مصروفات في هذه الفترة للتصدير.", exportFailed: "فشل التصدير", couldNotGeneratePDF: "تعذر إنشاء ملف PDF. حاول مرة أخرى.", insights: "رؤى", behaviorAnalysis: "تحليل سلوك إنفاقك", noInsightsYet: "لا توجد رؤى بعد", addExpensesToStart: "أضف بعض المصروفات للبدء", insightTopCatTitle: "{category} هي فئتك الأعلى", insightTopCatDesc: "أنفقت {amount}$ على {category} هذا الشهر — أكثر من أي فئة أخرى.", insightSpendingUpTitle: "الإنفاق ارتفع {pct}% هذا الشهر", insightSpendingDownTitle: "الإنفاق انخفض {pct}% مقارنة بالشهر الماضي", insightSpendingUpDesc: "أنفقت {curr}$ حتى الآن مقابل {prev}$ الشهر الماضي. انتبه لذلك.", insightSpendingDownDesc: "خبر رائع — إنفاقك أقل من الشهر الماضي. أنفقت {curr}$ مقابل {prev}$ الشهر الماضي.", insightWeekendTitle: "تنفق أكثر في عطلة نهاية الأسبوع", insightWeekendDesc: "إنفاق عطلة نهاية الأسبوع هو {weekend}$ مقابل {weekday}$ في أيام الأسبوع. معظم الإنفاق الاختياري يحدث في نهاية الأسبوع.", insightSmallTitle: "المشتريات الصغيرة تتجمع", insightSmallDesc: "المشتريات تحت 10$ بلغت {total}$ — {pct}% من إنفاقك. غالبًا ما تمر دون ملاحظة.", insightUnusualTitle: "{count} مصروف كبير غير معتاد", insightUnusualTitlePlural: "{count} مصروفات كبيرة غير معتادة", insightUnusualDesc: "لديك {desc} أعلى بكثير من المتوسط: {items}.", insightUnusualDescOne: "مصروف واحد", insightUnusualDescMany: "عدة مصروفات", insightOverBudgetTitle: "تجاوزت ميزانيتك الشهرية", insightOverBudgetDesc: "إنفاقك {spent}$ تجاوز ميزانيتك {budget}$ بمقدار {over}$.", insightNearBudgetTitle: "أنت تقترب من الميزانية الشهرية", insightNearBudgetDesc: "استخدمت {pct}% من ميزانيتك الشهرية. بقي {left} فقط.", insightOnTrackTitle: "أداؤك جيد هذا الشهر", insightOnTrackDesc: "أنفقت {spent}$ من ميزانية {budget}$ في منتصف الشهر. استمر.", insightCatOverTitle: "تجاوزت ميزانية {category}", insightCatOverDesc: "أنفقت {spent}$ على {category}، وهذا يتجاوز حد {limit}$ بمقدار {over}$.", insightCatWarnTitle: "{category} عند {pct}% من الميزانية", insightCatWarnDesc: "أنفقت {spent}$ من ميزانية {limit}$ الخاصة بـ {category}.", insightDailyTitle: "تنفق {avg}$ يوميًا في المتوسط", insightDailyDescOk: "بهذا المعدل، ستنفق تقريبًا {projected}$ هذا الشهر. هذا ضمن ميزانيتك.", insightDailyDescOver: "بهذا المعدل، ستنفق تقريبًا {projected}$ هذا الشهر. هذا يتجاوز ميزانيتك الشهرية.", withinBudget: "هذا ضمن ميزانيتك.", exceedsBudget: "هذا يتجاوز ميزانيتك الشهرية.", monthlyBudget: "الميزانية الشهرية", categoryBudgets: "ميزانيات الفئات", tapToEdit: "اضغط للتعديل", addMoreBudgets: "إضافة ميزانيات أخرى", budgetModal: "ميزانية {category}", settings: "الإعدادات", profile: "الملف الشخصي", name: "الاسم", monthlyIncome: "الدخل الشهري", yourData: "بياناتك", backupSize: "حجم النسخة الاحتياطية", backupRestore: "نسخ احتياطي واستعادة", exportBackup: "تصدير النسخة الاحتياطية", exportBackupSub: "حفظ ملف JSON يحتوي على كل بياناتك", importBackup: "استيراد نسخة احتياطية", importBackupSub: "استعادة البيانات من ملف JSON", howBackupWorks: "كيف تعمل النسخة الاحتياطية: ", howBackupWorksText: "يتم حفظ ملف .json على جهازك (أو يمكنك مشاركته عبر البريد أو Drive). للاستعادة، افتح التطبيق بعد إعادة التثبيت واضغط استيراد ثم اختر الملف نفسه.", dangerZone: "منطقة خطرة", clearAllData: "مسح كل البيانات", clearAllDataSub: "حذف كل شيء نهائيًا والبدء من جديد", clearAllDataConfirmTitle: "مسح كل البيانات", clearAllDataConfirmMsg: "سيؤدي هذا إلى حذف جميع المصروفات والملف الشخصي والإعدادات نهائيًا. لا يمكن التراجع عن ذلك.\n\nننصح بتصدير نسخة احتياطية أولًا.", deleteEverything: "حذف الكل", importConfirmTitle: "استيراد نسخة احتياطية", importConfirmMsg: "سيستبدل هذا كل بياناتك الحالية بمحتويات ملف النسخة الاحتياطية. هل تريد المتابعة؟", importBtnLabel: "استيراد", importSuccessTitle: "تم الاستيراد بنجاح", importSuccessMsg: "تمت استعادة {count} عملية من نسخة بتاريخ {date}.", importSuccessMsgPlural: "تمت استعادة {count} عمليات من نسخة بتاريخ {date}.", exportFailedTitle: "فشل التصدير", importFailedTitle: "فشل الاستيراد", saveChanges: "حفظ التغييرات", language: "اللغة", appLanguage: "لغة التطبيق", restartRequiredTitle: "إعادة التشغيل مطلوبة", restartRequiredMsg: "سيُعاد تشغيل التطبيق لتطبيق تغييرات اللغة والتخطيط.", version: "Intensive v1.0.0", report: "التقرير الشهري", reportSub: "ملخص {month}", exportReport: "تصدير PDF", totalSpent: "إجمالي المصروف", avgPerDay: "المتوسط / يوم", transactions2: "العمليات", vsLastMonth: "مقارنة بالشهر الماضي", topSpending: "أعلى فئات الإنفاق", unusualSpend: "إنفاق غير معتاد", noData2: "لا توجد بيانات هذا الشهر", noUnusual: "لا توجد عمليات كبيرة غير معتادة هذا الشهر" },
 } as const;
 
-// ── Template helper ────────────────────────────────────────────────────────────
-export function interpolate(str: string, vars: Record<string, string | number>): string {
-  return Object.entries(vars).reduce((s, [k, v]) => s.replace(new RegExp(`\\{${k}\\}`, "g"), String(v)), str);
+export function interpolate(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, key) => String(vars[key] ?? `{${key}}`));
 }

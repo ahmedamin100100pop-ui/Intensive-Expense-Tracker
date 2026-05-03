@@ -15,12 +15,13 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
+import { COUNTRIES } from "@/constants/translations";
 import type { Goal } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 5;
 
 export default function OnboardingScreen() {
   const col = useColors();
@@ -30,14 +31,17 @@ export default function OnboardingScreen() {
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
+  const [countryCode, setCountryCode] = useState("us");
   const [income, setIncome] = useState("");
   const [budget, setBudget] = useState("");
   const [goal, setGoal] = useState<Goal>("understand");
 
+  const selectedCountry = COUNTRIES.find((c) => c.code === countryCode) ?? COUNTRIES[0];
+
   const GOALS: { id: Goal; labelKey: string; descKey: string; icon: keyof typeof Feather.glyphMap }[] = [
     { id: "understand", labelKey: "goalUnderstand", descKey: "goalUnderstandDesc", icon: "eye" },
-    { id: "save",       labelKey: "goalSave",       descKey: "goalSaveDesc",       icon: "trending-up" },
-    { id: "reduce-food",labelKey: "goalReduceFood", descKey: "goalReduceFoodDesc", icon: "coffee" },
+    { id: "save", labelKey: "goalSave", descKey: "goalSaveDesc", icon: "trending-up" },
+    { id: "reduce-food", labelKey: "goalReduceFood", descKey: "goalReduceFoodDesc", icon: "coffee" },
     { id: "control-shopping", labelKey: "goalControlShopping", descKey: "goalControlShoppingDesc", icon: "shopping-bag" },
     { id: "track-budget", labelKey: "goalTrackBudget", descKey: "goalTrackBudgetDesc", icon: "target" },
   ];
@@ -49,6 +53,7 @@ export default function OnboardingScreen() {
     } else {
       setUserProfile({
         name: name.trim() || "User",
+        countryCode,
         monthlyIncome: parseFloat(income) || 4500,
         monthlyBudget: parseFloat(budget) || 2500,
         savingsGoal: (parseFloat(income) || 4500) * 0.2,
@@ -61,33 +66,20 @@ export default function OnboardingScreen() {
 
   const canProceed =
     step === 0 ? name.trim().length > 0
-    : step === 1 ? income.length > 0 && parseFloat(income) > 0
-    : step === 2 ? budget.length > 0 && parseFloat(budget) > 0
+    : step === 1 ? countryCode.length > 0
+    : step === 2 ? income.length > 0 && parseFloat(income) > 0
+    : step === 3 ? budget.length > 0 && parseFloat(budget) > 0
     : true;
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   return (
-    <View style={[styles.root, { backgroundColor: col.background }]}>
+    <View style={[styles.root, { backgroundColor: col.background }]}> 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.flex}>
-        <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingTop: topPad + 24, paddingBottom: insets.bottom + 40 }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Progress */}
+        <ScrollView contentContainerStyle={[styles.scroll, { paddingTop: topPad + 24, paddingBottom: insets.bottom + 40 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.progress}>
             {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  {
-                    backgroundColor: i <= step ? col.primary : col.border,
-                    width: i === step ? 24 : 8,
-                  },
-                ]}
-              />
+              <View key={i} style={[styles.dot, { backgroundColor: i <= step ? col.primary : col.border, width: i === step ? 24 : 8 }]} />
             ))}
           </View>
 
@@ -99,15 +91,7 @@ export default function OnboardingScreen() {
               <Text style={[styles.heading, { color: col.foreground }]}>{t("whatsYourName")}</Text>
               <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("reportsPersonalized")}</Text>
               <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
-                <TextInput
-                  style={[styles.input, { color: col.foreground }]}
-                  placeholder={t("yourName")}
-                  placeholderTextColor={col.mutedForeground}
-                  value={name}
-                  onChangeText={setName}
-                  autoFocus
-                  autoCapitalize="words"
-                />
+                <TextInput style={[styles.input, { color: col.foreground }]} placeholder={t("yourName")} placeholderTextColor={col.mutedForeground} value={name} onChangeText={setName} autoFocus autoCapitalize="words" />
               </View>
             </View>
           )}
@@ -115,21 +99,28 @@ export default function OnboardingScreen() {
           {step === 1 && (
             <View key="step1">
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
-                <Feather name="dollar-sign" size={32} color={col.primary} />
+                <Feather name="globe" size={32} color={col.primary} />
               </View>
-              <Text style={[styles.heading, { color: col.foreground }]}>{t("whatsYourIncome")}</Text>
-              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("helpPlanBudget")}</Text>
-              <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
-                <Text style={[styles.currency, { color: col.mutedForeground }]}>$</Text>
-                <TextInput
-                  style={[styles.input, { color: col.foreground }]}
-                  placeholder="4,500"
-                  placeholderTextColor={col.mutedForeground}
-                  keyboardType="numeric"
-                  value={income}
-                  onChangeText={setIncome}
-                  autoFocus
-                />
+              <Text style={[styles.heading, { color: col.foreground }]}>{t("chooseYourCountry")}</Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("countrySubtitle")}</Text>
+              <View style={styles.countryList}>
+                {COUNTRIES.map((country) => {
+                  const active = country.code === countryCode;
+                  return (
+                    <TouchableOpacity key={country.code} style={[styles.countryItem, { backgroundColor: active ? col.secondary : col.card, borderColor: active ? col.primary : col.border }]} onPress={() => { setCountryCode(country.code); Haptics.selectionAsync(); }}>
+                      <View style={styles.countryLeft}>
+                        <View style={[styles.countryIcon, { backgroundColor: col.primary + "16" }]}>
+                          <Text style={[styles.countrySymbol, { color: col.primary }]}>{country.symbol}</Text>
+                        </View>
+                        <View>
+                          <Text style={[styles.countryName, { color: col.foreground }]}>{country.nativeName}</Text>
+                          <Text style={[styles.countrySub, { color: col.mutedForeground }]}>{country.name}</Text>
+                        </View>
+                      </View>
+                      {active && <Feather name="check-circle" size={18} color={col.primary} />}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           )}
@@ -137,30 +128,34 @@ export default function OnboardingScreen() {
           {step === 2 && (
             <View key="step2">
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
-                <Feather name="target" size={32} color={col.primary} />
+                <Feather name="dollar-sign" size={32} color={col.primary} />
               </View>
-              <Text style={[styles.heading, { color: col.foreground }]}>{t("monthlyLimit")}</Text>
-              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("setABudget")}</Text>
+              <Text style={[styles.heading, { color: col.foreground }]}>{t("whatsYourIncome")}</Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("helpPlanBudget")}</Text>
               <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
-                <Text style={[styles.currency, { color: col.mutedForeground }]}>$</Text>
-                <TextInput
-                  style={[styles.input, { color: col.foreground }]}
-                  placeholder="2,500"
-                  placeholderTextColor={col.mutedForeground}
-                  keyboardType="numeric"
-                  value={budget}
-                  onChangeText={setBudget}
-                  autoFocus
-                />
+                <Text style={[styles.currency, { color: col.mutedForeground }]}>{selectedCountry.symbol}</Text>
+                <TextInput style={[styles.input, { color: col.foreground }]} placeholder="4,500" placeholderTextColor={col.mutedForeground} keyboardType="numeric" value={income} onChangeText={setIncome} autoFocus />
               </View>
-              {income && budget && parseFloat(budget) > parseFloat(income) && (
-                <Text style={[styles.hint, { color: col.warning }]}>{t("budgetHigherThanIncome")}</Text>
-              )}
             </View>
           )}
 
           {step === 3 && (
             <View key="step3">
+              <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
+                <Feather name="target" size={32} color={col.primary} />
+              </View>
+              <Text style={[styles.heading, { color: col.foreground }]}>{t("monthlyLimit")}</Text>
+              <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("setABudget")}</Text>
+              <View style={[styles.inputRow, { borderColor: col.border, backgroundColor: col.card }]}>
+                <Text style={[styles.currency, { color: col.mutedForeground }]}>{selectedCountry.symbol}</Text>
+                <TextInput style={[styles.input, { color: col.foreground }]} placeholder="2,500" placeholderTextColor={col.mutedForeground} keyboardType="numeric" value={budget} onChangeText={setBudget} autoFocus />
+              </View>
+              {income && budget && parseFloat(budget) > parseFloat(income) && <Text style={[styles.hint, { color: col.warning }]}>{t("budgetHigherThanIncome")}</Text>}
+            </View>
+          )}
+
+          {step === 4 && (
+            <View key="step4">
               <View style={[styles.iconBig, { backgroundColor: col.secondary }]}>
                 <Feather name="flag" size={32} color={col.primary} />
               </View>
@@ -168,17 +163,7 @@ export default function OnboardingScreen() {
               <Text style={[styles.subheading, { color: col.mutedForeground }]}>{t("tailorInsights")}</Text>
               <View style={styles.goals}>
                 {GOALS.map((g) => (
-                  <TouchableOpacity
-                    key={g.id}
-                    style={[
-                      styles.goalItem,
-                      {
-                        backgroundColor: goal === g.id ? col.secondary : col.card,
-                        borderColor: goal === g.id ? col.primary : col.border,
-                      },
-                    ]}
-                    onPress={() => { setGoal(g.id); Haptics.selectionAsync(); }}
-                  >
+                  <TouchableOpacity key={g.id} style={[styles.goalItem, { backgroundColor: goal === g.id ? col.secondary : col.card, borderColor: goal === g.id ? col.primary : col.border }]} onPress={() => { setGoal(g.id); Haptics.selectionAsync(); }}>
                     <View style={[styles.goalIcon, { backgroundColor: goal === g.id ? col.primary : col.muted }]}>
                       <Feather name={g.icon} size={16} color={goal === g.id ? "#fff" : col.mutedForeground} />
                     </View>
@@ -196,21 +181,12 @@ export default function OnboardingScreen() {
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 16, paddingHorizontal: 24, backgroundColor: col.background }]}>
           {step > 0 && (
-            <TouchableOpacity
-              onPress={() => { Haptics.selectionAsync(); setStep((s) => s - 1); }}
-              style={[styles.backBtn, { borderColor: col.border }]}
-            >
+            <TouchableOpacity onPress={() => { Haptics.selectionAsync(); setStep((s) => s - 1); }} style={[styles.backBtn, { borderColor: col.border }]}>
               <Feather name="arrow-left" size={20} color={col.foreground} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={[styles.nextBtn, { backgroundColor: canProceed ? col.primary : col.muted, flex: 1 }]}
-            onPress={handleNext}
-            disabled={!canProceed}
-          >
-            <Text style={[styles.nextText, { color: canProceed ? "#fff" : col.mutedForeground }]}>
-              {step === TOTAL_STEPS - 1 ? t("getStarted") : t("continue")}
-            </Text>
+          <TouchableOpacity style={[styles.nextBtn, { backgroundColor: canProceed ? col.primary : col.muted, flex: 1 }]} onPress={handleNext} disabled={!canProceed}>
+            <Text style={[styles.nextText, { color: canProceed ? "#fff" : col.mutedForeground }]}>{step === TOTAL_STEPS - 1 ? t("getStarted") : t("continue")}</Text>
             <Feather name={step === TOTAL_STEPS - 1 ? "check" : "arrow-right"} size={18} color={canProceed ? "#fff" : col.mutedForeground} />
           </TouchableOpacity>
         </View>
@@ -232,6 +208,13 @@ const styles = StyleSheet.create({
   currency: { fontSize: 22, fontWeight: "600", marginRight: 8 },
   input: { flex: 1, fontSize: 24, fontWeight: "600" },
   hint: { marginTop: 8, fontSize: 13 },
+  countryList: { gap: 10 },
+  countryItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 14, borderWidth: 1.5, borderRadius: colors.radius },
+  countryLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  countryIcon: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center" },
+  countrySymbol: { fontSize: 13, fontWeight: "800" },
+  countryName: { fontSize: 14, fontWeight: "700" },
+  countrySub: { fontSize: 12, marginTop: 1 },
   goals: { gap: 10 },
   goalItem: { flexDirection: "row", alignItems: "center", padding: 14, borderWidth: 1.5, borderRadius: colors.radius, gap: 12 },
   goalIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },

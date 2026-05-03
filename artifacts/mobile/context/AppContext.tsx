@@ -49,6 +49,7 @@ export interface UserProfile {
   savingsGoal: number;
   selectedGoal: Goal;
   onboardingComplete: boolean;
+  countryCode?: string;
 }
 
 export interface CategoryBudget {
@@ -96,7 +97,6 @@ const AppContext = createContext<AppContextType | null>(null);
 const STORAGE_KEY = "intensive_data_v1";
 
 const SAMPLE_EXPENSES: Expense[] = [
-  // April 2026
   { id: "a01", amount: 850, category: "rent", date: "2026-04-01", note: "Monthly rent", paymentMethod: "bank", createdAt: "2026-04-01T08:00:00Z" },
   { id: "a02", amount: 89, category: "bills", date: "2026-04-02", note: "Electric bill", paymentMethod: "bank", createdAt: "2026-04-02T09:00:00Z" },
   { id: "a03", amount: 45.5, category: "food", date: "2026-04-02", note: "Grocery run", paymentMethod: "card", createdAt: "2026-04-02T11:00:00Z" },
@@ -128,7 +128,6 @@ const SAMPLE_EXPENSES: Expense[] = [
   { id: "a29", amount: 30, category: "transport", date: "2026-04-28", note: "Gas", paymentMethod: "card", createdAt: "2026-04-28T17:00:00Z" },
   { id: "a30", amount: 14, category: "food", date: "2026-04-29", note: "Breakfast", paymentMethod: "cash", createdAt: "2026-04-29T09:00:00Z" },
   { id: "a31", amount: 8.5, category: "food", date: "2026-04-30", note: "Coffee", paymentMethod: "cash", createdAt: "2026-04-30T08:00:00Z" },
-  // May 2026
   { id: "m01", amount: 850, category: "rent", date: "2026-05-01", note: "Monthly rent", paymentMethod: "bank", createdAt: "2026-05-01T08:00:00Z" },
   { id: "m02", amount: 89, category: "bills", date: "2026-05-01", note: "Electric bill", paymentMethod: "bank", createdAt: "2026-05-01T09:00:00Z" },
   { id: "m03", amount: 15.5, category: "food", date: "2026-05-01", note: "Lunch", paymentMethod: "card", createdAt: "2026-05-01T13:00:00Z" },
@@ -145,6 +144,7 @@ const DEFAULT_PROFILE: UserProfile = {
   savingsGoal: 1000,
   selectedGoal: "understand",
   onboardingComplete: false,
+  countryCode: "us",
 };
 
 const DEFAULT_BUDGETS: CategoryBudget[] = [
@@ -173,96 +173,43 @@ function getDayOfWeek(dateStr: string): number {
   return new Date(dateStr).getDay();
 }
 
-function computeSummary(
-  expenses: Expense[],
-  profile: UserProfile,
-): SpendingSummary {
+function computeSummary(expenses: Expense[], profile: UserProfile): SpendingSummary {
   const currKey = getCurrentMonthKey();
   const prevKey = getPreviousMonthKey();
-
   const curr = expenses.filter((e) => e.date.startsWith(currKey) && !e.isIncome);
   const prev = expenses.filter((e) => e.date.startsWith(prevKey) && !e.isIncome);
   const currIncome = expenses.filter((e) => e.date.startsWith(currKey) && e.isIncome);
-
   const totalCurrentMonth = curr.reduce((s, e) => s + e.amount, 0);
   const totalPreviousMonth = prev.reduce((s, e) => s + e.amount, 0);
   const totalCurrentMonthIncome = currIncome.reduce((s, e) => s + e.amount, 0);
   const remainingBudget = profile.monthlyBudget - totalCurrentMonth;
-  const percentChange =
-    totalPreviousMonth > 0
-      ? ((totalCurrentMonth - totalPreviousMonth) / totalPreviousMonth) * 100
-      : 0;
-
+  const percentChange = totalPreviousMonth > 0 ? ((totalCurrentMonth - totalPreviousMonth) / totalPreviousMonth) * 100 : 0;
   const categoryTotals = {} as Record<Category, number>;
-  const cats: Category[] = [
-    "food","transport","shopping","rent","bills","health",
-    "entertainment","education","travel","family","other",
-  ];
+  const cats: Category[] = ["food", "transport", "shopping", "rent", "bills", "health", "entertainment", "education", "travel", "family", "other"];
   cats.forEach((c) => (categoryTotals[c] = 0));
-  curr.forEach((e) => {
-    categoryTotals[e.category] = (categoryTotals[e.category] ?? 0) + e.amount;
-  });
-
-  const topCategory = (Object.entries(categoryTotals) as [Category, number][])
-    .sort((a, b) => b[1] - a[1])
-    .find(([, v]) => v > 0)?.[0] ?? null;
-
+  curr.forEach((e) => { categoryTotals[e.category] = (categoryTotals[e.category] ?? 0) + e.amount; });
+  const topCategory = (Object.entries(categoryTotals) as [Category, number][]).sort((a, b) => b[1] - a[1]).find(([, v]) => v > 0)?.[0] ?? null;
   const dailyMap: Record<string, number> = {};
-  curr.forEach((e) => {
-    dailyMap[e.date] = (dailyMap[e.date] ?? 0) + e.amount;
-  });
-  const dailySpending = Object.entries(dailyMap)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, amount]) => ({ date, amount }));
-
+  curr.forEach((e) => { dailyMap[e.date] = (dailyMap[e.date] ?? 0) + e.amount; });
+  const dailySpending = Object.entries(dailyMap).sort((a, b) => a[0].localeCompare(b[0])).map(([date, amount]) => ({ date, amount }));
   let weekdayTotal = 0;
   let weekendTotal = 0;
-  curr.forEach((e) => {
-    const day = getDayOfWeek(e.date);
-    if (day === 0 || day === 6) weekendTotal += e.amount;
-    else weekdayTotal += e.amount;
-  });
-
-  const smallPurchasesTotal = curr
-    .filter((e) => e.amount < 10)
-    .reduce((s, e) => s + e.amount, 0);
-  const smallPurchasesPercent =
-    totalCurrentMonth > 0 ? (smallPurchasesTotal / totalCurrentMonth) * 100 : 0;
-
+  curr.forEach((e) => { const day = getDayOfWeek(e.date); if (day === 0 || day === 6) weekendTotal += e.amount; else weekdayTotal += e.amount; });
+  const smallPurchasesTotal = curr.filter((e) => e.amount < 10).reduce((s, e) => s + e.amount, 0);
+  const smallPurchasesPercent = totalCurrentMonth > 0 ? (smallPurchasesTotal / totalCurrentMonth) * 100 : 0;
   const daysInMonth = new Date().getDate();
   const averageDaily = daysInMonth > 0 ? totalCurrentMonth / daysInMonth : 0;
-
   const amounts = curr.map((e) => e.amount);
   const mean = amounts.length > 0 ? amounts.reduce((a, b) => a + b, 0) / amounts.length : 0;
-  const stdDev = amounts.length > 0
-    ? Math.sqrt(amounts.map((x) => (x - mean) ** 2).reduce((a, b) => a + b, 0) / amounts.length)
-    : 0;
+  const stdDev = amounts.length > 0 ? Math.sqrt(amounts.map((x) => (x - mean) ** 2).reduce((a, b) => a + b, 0) / amounts.length) : 0;
   const unusualExpenses = curr.filter((e) => e.amount > mean + 2 * stdDev);
-
   let moneyPersonality = "Balanced Spender";
   if (weekendTotal > weekdayTotal * 1.5) moneyPersonality = "Weekend Spender";
   else if (topCategory === "food") moneyPersonality = "Food Lover";
   else if (topCategory === "shopping") moneyPersonality = "Impulse Shopper";
   else if (smallPurchasesPercent > 25) moneyPersonality = "Small Purchases Collector";
   else if (totalCurrentMonth < profile.monthlyBudget * 0.7) moneyPersonality = "Careful Planner";
-
-  return {
-    totalCurrentMonth,
-    totalPreviousMonth,
-    totalCurrentMonthIncome,
-    remainingBudget,
-    percentChange,
-    topCategory,
-    categoryTotals,
-    dailySpending,
-    weekdayTotal,
-    weekendTotal,
-    smallPurchasesTotal,
-    smallPurchasesPercent,
-    averageDaily,
-    unusualExpenses,
-    moneyPersonality,
-  };
+  return { totalCurrentMonth, totalPreviousMonth, totalCurrentMonthIncome, remainingBudget, percentChange, topCategory, categoryTotals, dailySpending, weekdayTotal, weekendTotal, smallPurchasesTotal, smallPurchasesPercent, averageDaily, unusualExpenses, moneyPersonality };
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -293,134 +240,58 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  const persist = useCallback(
-    async (
-      e: Expense[],
-      p: UserProfile | null,
-      b: CategoryBudget[],
-    ) => {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ expenses: e, userProfile: p, categoryBudgets: b }));
-      } catch {}
-    },
-    [],
-  );
+  const persist = useCallback(async (nextExpenses: Expense[], nextProfile: UserProfile | null, nextBudgets: CategoryBudget[]) => {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ expenses: nextExpenses, userProfile: nextProfile, categoryBudgets: nextBudgets }));
+  }, []);
 
-  const addExpense = useCallback(
-    (expense: Omit<Expense, "id" | "createdAt">) => {
-      const newExpense: Expense = {
-        ...expense,
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 6),
-        createdAt: new Date().toISOString(),
-      };
-      setExpenses((prev) => {
-        const next = [newExpense, ...prev];
-        persist(next, userProfile, categoryBudgets);
-        return next;
-      });
-    },
-    [userProfile, categoryBudgets, persist],
-  );
+  const addExpense = useCallback((e: Omit<Expense, "id" | "createdAt">) => {
+    const next = [{ ...e, id: String(Date.now()), createdAt: new Date().toISOString() }, ...expenses];
+    setExpenses(next);
+    void persist(next, userProfile, categoryBudgets);
+  }, [expenses, userProfile, categoryBudgets, persist]);
 
-  const deleteExpense = useCallback(
-    (id: string) => {
-      setExpenses((prev) => {
-        const next = prev.filter((e) => e.id !== id);
-        persist(next, userProfile, categoryBudgets);
-        return next;
-      });
-    },
-    [userProfile, categoryBudgets, persist],
-  );
+  const deleteExpense = useCallback((id: string) => {
+    const next = expenses.filter((e) => e.id !== id);
+    setExpenses(next);
+    void persist(next, userProfile, categoryBudgets);
+  }, [expenses, userProfile, categoryBudgets, persist]);
 
-  const setUserProfile = useCallback(
-    (p: UserProfile) => {
-      setUserProfileState(p);
-      persist(expenses, p, categoryBudgets);
-    },
-    [expenses, categoryBudgets, persist],
-  );
+  const setUserProfile = useCallback((p: UserProfile) => {
+    setUserProfileState(p);
+    void persist(expenses, p, categoryBudgets);
+  }, [expenses, categoryBudgets, persist]);
 
-  const setCategoryBudget = useCallback(
-    (category: Category, amount: number) => {
-      setCategoryBudgets((prev) => {
-        const next = prev.some((b) => b.category === category)
-          ? prev.map((b) => (b.category === category ? { ...b, budgetAmount: amount } : b))
-          : [...prev, { category, budgetAmount: amount }];
-        persist(expenses, userProfile, next);
-        return next;
-      });
-    },
-    [expenses, userProfile, persist],
-  );
+  const setCategoryBudget = useCallback((category: Category, amount: number) => {
+    const next = categoryBudgets.some((b) => b.category === category)
+      ? categoryBudgets.map((b) => (b.category === category ? { ...b, budgetAmount: amount } : b))
+      : [...categoryBudgets, { category, budgetAmount: amount }];
+    setCategoryBudgets(next);
+    void persist(expenses, userProfile, next);
+  }, [categoryBudgets, expenses, userProfile, persist]);
 
-  const restoreBackup = useCallback(
-    (data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[] }) => {
-      const nextExpenses = data.expenses ?? [];
-      const nextProfile = data.userProfile ?? null;
-      const nextBudgets = data.categoryBudgets?.length ? data.categoryBudgets : DEFAULT_BUDGETS;
-      setExpenses(nextExpenses);
-      setUserProfileState(nextProfile);
-      setCategoryBudgets(nextBudgets);
-      persist(nextExpenses, nextProfile, nextBudgets);
-    },
-    [persist],
-  );
+  const restoreBackup = useCallback((data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[] }) => {
+    setExpenses(data.expenses);
+    setUserProfileState(data.userProfile);
+    setCategoryBudgets(data.categoryBudgets);
+    void persist(data.expenses, data.userProfile, data.categoryBudgets);
+  }, [persist]);
 
   const clearAllData = useCallback(() => {
     setExpenses([]);
     setUserProfileState(null);
     setCategoryBudgets(DEFAULT_BUDGETS);
-    persist([], null, DEFAULT_BUDGETS);
+    void persist([], null, DEFAULT_BUDGETS);
   }, [persist]);
 
-  const currentMonthExpenses = useMemo(
-    () => expenses.filter((e) => e.date.startsWith(getCurrentMonthKey()) && !e.isIncome),
-    [expenses],
-  );
+  const currentMonthExpenses = useMemo(() => expenses.filter((e) => e.date.startsWith(getCurrentMonthKey()) && !e.isIncome), [expenses]);
+  const previousMonthExpenses = useMemo(() => expenses.filter((e) => e.date.startsWith(getPreviousMonthKey()) && !e.isIncome), [expenses]);
+  const currentMonthIncomeEntries = useMemo(() => expenses.filter((e) => e.date.startsWith(getCurrentMonthKey()) && e.isIncome), [expenses]);
+  const summary = useMemo(() => userProfile ? computeSummary(expenses, userProfile) : null, [expenses, userProfile]);
 
-  const previousMonthExpenses = useMemo(
-    () => expenses.filter((e) => e.date.startsWith(getPreviousMonthKey()) && !e.isIncome),
-    [expenses],
-  );
-
-  const currentMonthIncomeEntries = useMemo(
-    () => expenses.filter((e) => e.date.startsWith(getCurrentMonthKey()) && e.isIncome),
-    [expenses],
-  );
-
-  const effectiveProfile = userProfile ?? DEFAULT_PROFILE;
-
-  const summary = useMemo(
-    () => computeSummary(expenses, effectiveProfile),
-    [expenses, effectiveProfile],
-  );
-
-  return (
-    <AppContext.Provider
-      value={{
-        expenses,
-        userProfile,
-        categoryBudgets,
-        summary,
-        addExpense,
-        deleteExpense,
-        setUserProfile,
-        setCategoryBudget,
-        isLoading,
-        currentMonthExpenses,
-        previousMonthExpenses,
-        currentMonthIncomeEntries,
-        restoreBackup,
-        clearAllData,
-      }}
-    >
-      {children}
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={{ expenses, userProfile, categoryBudgets, summary, addExpense, deleteExpense, setUserProfile, setCategoryBudget, isLoading, currentMonthExpenses, previousMonthExpenses, currentMonthIncomeEntries, restoreBackup, clearAllData }}>{children}</AppContext.Provider>;
 }
 
-export function useApp(): AppContextType {
+export function useApp() {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error("useApp must be used within AppProvider");
   return ctx;
