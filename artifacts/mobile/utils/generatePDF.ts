@@ -1,5 +1,6 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import { Platform } from "react-native";
 
 import type { Category, Expense, UserProfile } from "@/context/AppContext";
 
@@ -281,13 +282,23 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
 </body>
 </html>`;
 
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
-  const canShare = await Sharing.isAvailableAsync();
-  if (canShare) {
-    await Sharing.shareAsync(uri, {
-      mimeType: "application/pdf",
-      dialogTitle: `Intensive Report – ${periodLabel}`,
-      UTI: "com.adobe.pdf",
-    });
+  if (Platform.OS === "web") {
+    // Open HTML in a new tab — user can File → Print → Save as PDF
+    const win = window.open("", "_blank");
+    if (!win) throw new Error("Popup blocked. Please allow popups and try again.");
+    win.document.write(html);
+    win.document.close();
+    // Small delay so the page fully renders before the print dialog opens
+    setTimeout(() => { win.focus(); win.print(); }, 600);
+  } else {
+    const { uri } = await Print.printToFileAsync({ html, base64: false });
+    const canShare = await Sharing.isAvailableAsync();
+    if (canShare) {
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: `Intensive Report – ${periodLabel}`,
+        UTI: "com.adobe.pdf",
+      });
+    }
   }
 }
