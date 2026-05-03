@@ -110,14 +110,18 @@ export default function AnalyticsScreen() {
     if (periodType === "month") {
       const dayMap: Record<string, number> = {};
       filtered.forEach((e) => { dayMap[e.date] = (dayMap[e.date] ?? 0) + e.amount; });
-      return Object.entries(dayMap).sort((a, b) => a[0].localeCompare(b[0]))
+      const arr = Object.entries(dayMap).sort((a, b) => a[0].localeCompare(b[0]))
         .map(([d, v]) => ({ label: d.slice(8), value: v }));
+      if (arr.length === 1) arr.push({ ...arr[0] });
+      return arr;
     }
     if (periodType === "year") {
       const monthMap: Record<string, number> = {};
       filtered.forEach((e) => { const k = e.date.slice(0, 7); monthMap[k] = (monthMap[k] ?? 0) + e.amount; });
-      return Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0]))
+      const arr = Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0]))
         .map(([k, v]) => ({ label: new Date(k + "-01").toLocaleDateString("en-US", { month: "short" }), value: v }));
+      if (arr.length === 1) arr.push({ ...arr[0] });
+      return arr;
     }
     return [];
   }, [periodType, filtered]);
@@ -181,12 +185,11 @@ export default function AnalyticsScreen() {
     : t("spentThisYear");
 
   return (
-    <View style={[styles.root, { backgroundColor: col.background }]}>
+    <View style={[styles.root, { backgroundColor: col.background }]}> 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingTop: topPad + 16, paddingBottom: botPad + 90 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Title + Export */}
         <View style={styles.pageHeader}>
           <Text style={[styles.heading, { color: col.foreground }]}>{t("analytics")}</Text>
           <TouchableOpacity
@@ -205,8 +208,7 @@ export default function AnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Period type selector */}
-        <View style={[styles.periodTypeRow, { backgroundColor: col.card, borderColor: col.border }]}>
+        <View style={[styles.periodTypeRow, { backgroundColor: col.card, borderColor: col.border }]}> 
           {(["day", "month", "year"] as PeriodType[]).map((pt) => (
             <TouchableOpacity
               key={pt}
@@ -216,20 +218,15 @@ export default function AnalyticsScreen() {
               ]}
               onPress={() => { setPeriodType(pt); Haptics.selectionAsync(); }}
             >
-              <Text style={[styles.periodTypeText, { color: periodType === pt ? "#fff" : col.mutedForeground }]}>
+              <Text style={[styles.periodTypeText, { color: periodType === pt ? "#fff" : col.mutedForeground }]}> 
                 {PERIOD_LABELS[pt]}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Period navigator */}
-        <View style={[styles.navigator, { backgroundColor: col.card, borderColor: col.border }]}>
-          <TouchableOpacity
-            onPress={() => periodType === "day" ? navigateDay(-1) : periodType === "month" ? navigateMonth(-1) : navigateYear(-1)}
-            style={styles.navArrow}
-            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-          >
+        <View style={[styles.navigator, { backgroundColor: col.card, borderColor: col.border }]}> 
+          <TouchableOpacity onPress={() => periodType === "day" ? navigateDay(-1) : periodType === "month" ? navigateMonth(-1) : navigateYear(-1)} style={styles.navArrow} hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
             <Feather name="chevron-left" size={20} color={col.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navLabel, { color: col.foreground }]} numberOfLines={1}>{periodLabel}</Text>
@@ -247,8 +244,7 @@ export default function AnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Total hero */}
-        <View style={[styles.heroCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
+        <View style={[styles.heroCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}> 
           <Text style={styles.heroLabel}>{heroLabel}</Text>
           <Text style={styles.heroAmount}>{totalFormatted}</Text>
           <Text style={styles.heroSub}>
@@ -257,14 +253,13 @@ export default function AnalyticsScreen() {
         </View>
 
         {filtered.length === 0 ? (
-          <View style={[styles.empty, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
+          <View style={[styles.empty, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}> 
             <Feather name="inbox" size={32} color={col.mutedForeground} />
             <Text style={[styles.emptyText, { color: col.mutedForeground }]}>{t("noExpensesInPeriod")}</Text>
           </View>
         ) : (
           <>
-            {/* Donut chart */}
-            <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
+            <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}> 
               <Text style={[styles.cardTitle, { color: col.foreground }]}>{t("spendingByCategory")}</Text>
               <View style={styles.donutRow}>
                 <DonutChart data={donutData} size={170} innerRadius={48} centerLabel={totalFormatted} centerSubLabel={t("total")} />
@@ -275,18 +270,15 @@ export default function AnalyticsScreen() {
                       <Text style={[styles.legendLabel, { color: col.foreground }]} numberOfLines={1}>
                         {getCategoryLabel(d.category, language)}
                       </Text>
-                      <Text style={[styles.legendPct, { color: col.mutedForeground }]}>
-                        {d.percentage.toFixed(0)}%
-                      </Text>
+                      <Text style={[styles.legendPct, { color: col.mutedForeground }]}> {d.percentage.toFixed(0)}%</Text>
                     </View>
                   ))}
                 </View>
               </View>
             </View>
 
-            {/* Line chart */}
-            {periodType !== "day" && lineData.length >= 2 && (
-              <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
+            {periodType !== "day" && lineData.length >= 1 && (
+              <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}> 
                 <Text style={[styles.cardTitle, { color: col.foreground }]}>
                   {periodType === "month" ? t("dailySpending") : t("monthlySpending")}
                 </Text>
@@ -294,22 +286,17 @@ export default function AnalyticsScreen() {
               </View>
             )}
 
-            {/* Bar chart */}
             {barData.length > 0 && (
-              <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
+              <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}> 
                 <Text style={[styles.cardTitle, { color: col.foreground }]}>{t("categoryComparison")}</Text>
                 <BarChart data={barData} width={CHART_W} height={140} />
               </View>
             )}
 
-            {/* Full breakdown list */}
-            <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
+            <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}> 
               <Text style={[styles.cardTitle, { color: col.foreground }]}>{t("fullBreakdown")}</Text>
               {donutData.map((d, i) => (
-                <View
-                  key={d.category}
-                  style={[styles.breakdownItem, i < donutData.length - 1 && { borderBottomWidth: 1, borderBottomColor: col.border }]}
-                >
+                <View key={d.category} style={[styles.breakdownItem, i < donutData.length - 1 && { borderBottomWidth: 1, borderBottomColor: col.border }]}> 
                   <View style={[styles.breakdownDot, { backgroundColor: getCategoryColor(d.category) }]} />
                   <Text style={[styles.breakdownLabel, { color: col.foreground }]}>{getCategoryLabel(d.category, language)}</Text>
                   <View style={styles.breakdownRight}>

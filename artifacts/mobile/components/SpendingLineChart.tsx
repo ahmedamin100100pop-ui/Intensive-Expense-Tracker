@@ -19,9 +19,9 @@ interface Props {
 export function SpendingLineChart({ data, width = 300, height = 140, showDots = true }: Props) {
   const colors = useColors();
 
-  if (!data || data.length < 2) {
+  if (!data || data.length === 0) {
     return (
-      <View style={[styles.empty, { width, height }]}>
+      <View style={[styles.empty, { width, height }]}> 
         <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>Not enough data</Text>
       </View>
     );
@@ -38,19 +38,28 @@ export function SpendingLineChart({ data, width = 300, height = 140, showDots = 
   const minVal = Math.min(...data.map((d) => d.value));
   const range = maxVal - minVal || 1;
 
-  const toX = (i: number) => paddingLeft + (i / (data.length - 1)) * chartW;
+  const toX = (i: number) => (data.length === 1 ? width / 2 : paddingLeft + (i / (data.length - 1)) * chartW);
   const toY = (v: number) => paddingTop + chartH - ((v - minVal) / range) * chartH;
 
-  const linePath = data
-    .map((d, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(d.value)}`)
-    .join(" ");
+  const linePath =
+    data.length === 1
+      ? `M ${toX(0)} ${toY(data[0].value)} L ${toX(0.001)} ${toY(data[0].value)}`
+      : data.map((d, i) => `${i === 0 ? "M" : "L"} ${toX(i)} ${toY(d.value)}`).join(" ");
 
-  const areaPath = [
-    linePath,
-    `L ${toX(data.length - 1)} ${paddingTop + chartH}`,
-    `L ${toX(0)} ${paddingTop + chartH}`,
-    "Z",
-  ].join(" ");
+  const areaPath =
+    data.length === 1
+      ? [
+          `M ${toX(0)} ${toY(data[0].value)}`,
+          `L ${toX(0)} ${paddingTop + chartH}`,
+          `L ${toX(0)} ${paddingTop + chartH}`,
+          "Z",
+        ].join(" ")
+      : [
+          linePath,
+          `L ${toX(data.length - 1)} ${paddingTop + chartH}`,
+          `L ${toX(0)} ${paddingTop + chartH}`,
+          "Z",
+        ].join(" ");
 
   return (
     <View style={{ width, height }}>
