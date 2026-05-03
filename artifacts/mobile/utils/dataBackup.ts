@@ -83,20 +83,15 @@ function webPickJsonFile(): Promise<BackupData> {
 
 async function nativeExport(jsonStr: string, fileName: string): Promise<void> {
   // Dynamic import so module is never evaluated on web
-  const [FileSystem, Sharing] = await Promise.all([
-    import("expo-file-system"),
+  const [Sharing, DocumentPicker] = await Promise.all([
     import("expo-sharing"),
+    import("expo-document-picker"),
   ]);
-
-  const fileUri = `${FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? ""}${fileName}`;
-
-  await FileSystem.writeAsStringAsync(fileUri, jsonStr, {
-    encoding: "utf8",
-  });
 
   const canShare = await Sharing.isAvailableAsync();
   if (!canShare) throw new Error("Sharing is not available on this device.");
 
+  const fileUri = `data:application/json;charset=utf-8,${encodeURIComponent(jsonStr)}`;
   await Sharing.shareAsync(fileUri, {
     mimeType: "application/json",
     dialogTitle: `Intensive Backup – ${fileName}`,
@@ -119,7 +114,6 @@ async function nativeImport(): Promise<BackupData> {
   }
 
   const raw = await FileSystem.readAsStringAsync(result.assets[0].uri, {
-    encoding: "utf8",
   });
 
   let data: BackupData;
