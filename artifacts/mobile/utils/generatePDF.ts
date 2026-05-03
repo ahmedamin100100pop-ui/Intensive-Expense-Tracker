@@ -3,7 +3,6 @@ import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 
 import { getCountryByCode, getCategoryLabelForLang, type LanguageCode } from "@/constants/translations";
-import { useLanguage } from "@/context/LanguageContext";
 import type { Category, Expense, UserProfile } from "@/context/AppContext";
 
 const CATEGORY_COLORS: Record<Category, string> = {
@@ -40,15 +39,15 @@ function formatDate(dateStr: string, locale: string): string {
 interface PDFOptions {
   expenses: Expense[];
   userProfile: UserProfile | null;
+  language: LanguageCode;
   periodLabel: string;
   periodType: "day" | "month" | "year";
   monthlyData?: { label: string; amount: number }[];
 }
 
 export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
-  const { expenses, userProfile, periodLabel, periodType, monthlyData } = opts;
+  const { expenses, userProfile, language, periodLabel, periodType, monthlyData } = opts;
   const userName = userProfile?.name?.trim() || "Intensive User";
-  const language: LanguageCode = useLanguage ? "en" : "en";
   const locale = language === "ar" ? "ar-SA" : "en-US";
   const currency = getCountryByCode(userProfile?.countryCode).symbol;
   const total = expenses.reduce((s, e) => s + e.amount, 0);

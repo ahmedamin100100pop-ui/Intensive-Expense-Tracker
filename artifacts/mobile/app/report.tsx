@@ -62,7 +62,7 @@ export default function ReportScreen() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setExporting(true);
-      await generateAndSharePDF({ expenses: currentMonthExpenses, userProfile, periodLabel: monthName, periodType: "month", monthlyData });
+      await generateAndSharePDF({ expenses: currentMonthExpenses, userProfile, language, periodLabel: monthName, periodType: "month", monthlyData });
     } catch {
       Alert.alert(t("exportFailed"), t("couldNotGeneratePDF"));
     } finally {
