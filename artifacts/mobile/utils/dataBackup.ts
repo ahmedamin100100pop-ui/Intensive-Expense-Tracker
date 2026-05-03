@@ -82,11 +82,7 @@ function webPickJsonFile(): Promise<BackupData> {
 // ── Native helpers ────────────────────────────────────────────────────────────
 
 async function nativeExport(jsonStr: string, fileName: string): Promise<void> {
-  // Dynamic import so module is never evaluated on web
-  const [Sharing, DocumentPicker] = await Promise.all([
-    import("expo-sharing"),
-    import("expo-document-picker"),
-  ]);
+  const Sharing = await import("expo-sharing");
 
   const canShare = await Sharing.isAvailableAsync();
   if (!canShare) throw new Error("Sharing is not available on this device.");
@@ -99,10 +95,7 @@ async function nativeExport(jsonStr: string, fileName: string): Promise<void> {
 }
 
 async function nativeImport(): Promise<BackupData> {
-  const [DocumentPicker, FileSystem] = await Promise.all([
-    import("expo-document-picker"),
-    import("expo-file-system"),
-  ]);
+  const DocumentPicker = await import("expo-document-picker");
 
   const result = await DocumentPicker.getDocumentAsync({
     type: ["application/json", "text/plain", "*/*"],
@@ -113,8 +106,8 @@ async function nativeImport(): Promise<BackupData> {
     throw new Error("CANCELLED");
   }
 
-  const raw = await FileSystem.readAsStringAsync(result.assets[0].uri, {
-  });
+  const response = await fetch(result.assets[0].uri);
+  const raw = await response.text();
 
   let data: BackupData;
   try {
