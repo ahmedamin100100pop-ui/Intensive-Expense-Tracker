@@ -1,4 +1,4 @@
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -19,8 +19,22 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+const INCOME_COLOR = "#10B981";
+const INCOME_BG    = "#ECFDF5";
+
 export function ExpenseCard({ expense, onDelete, index = 0 }: Props) {
   const col = useColors();
+  const isIncome = !!expense.isIncome;
+
+  const displayLabel = isIncome
+    ? (expense.customLabel ?? "Income")
+    : getCategoryLabel(expense.category);
+
+  const amountText = isIncome
+    ? `+$${expense.amount.toFixed(2)}`
+    : `$${expense.amount.toFixed(2)}`;
+
+  const amountColor = isIncome ? INCOME_COLOR : col.foreground;
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 40).springify()}>
@@ -29,16 +43,36 @@ export function ExpenseCard({ expense, onDelete, index = 0 }: Props) {
           styles.card,
           {
             backgroundColor: col.card,
-            borderColor: col.border,
+            borderColor: isIncome ? "#D1FAE5" : col.border,
             borderRadius: colors.radius,
           },
         ]}
       >
-        <CategoryIcon category={expense.category} size="md" />
+        {/* Icon */}
+        {isIncome && expense.customIcon ? (
+          <View style={[styles.incomeIcon, { backgroundColor: INCOME_BG }]}>
+            <MaterialCommunityIcons
+              name={expense.customIcon as keyof typeof MaterialCommunityIcons.glyphMap}
+              size={20}
+              color={INCOME_COLOR}
+            />
+          </View>
+        ) : (
+          <CategoryIcon category={expense.category} size="md" />
+        )}
+
+        {/* Info */}
         <View style={styles.info}>
-          <Text style={[styles.category, { color: col.foreground }]}>
-            {getCategoryLabel(expense.category)}
-          </Text>
+          <View style={styles.labelRow}>
+            <Text style={[styles.category, { color: isIncome ? INCOME_COLOR : col.foreground }]}>
+              {displayLabel}
+            </Text>
+            {isIncome && (
+              <View style={styles.incomeBadge}>
+                <Text style={styles.incomeBadgeText}>Income</Text>
+              </View>
+            )}
+          </View>
           {expense.note ? (
             <Text style={[styles.note, { color: col.mutedForeground }]} numberOfLines={1}>
               {expense.note}
@@ -49,14 +83,15 @@ export function ExpenseCard({ expense, onDelete, index = 0 }: Props) {
             </Text>
           )}
         </View>
+
+        {/* Amount + date */}
         <View style={styles.right}>
-          <Text style={[styles.amount, { color: col.foreground }]}>
-            ${expense.amount.toFixed(2)}
-          </Text>
+          <Text style={[styles.amount, { color: amountColor }]}>{amountText}</Text>
           <Text style={[styles.date, { color: col.mutedForeground }]}>
             {formatDate(expense.date)}
           </Text>
         </View>
+
         {onDelete && (
           <TouchableOpacity
             onPress={() => onDelete(expense.id)}
@@ -85,8 +120,23 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+  incomeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   info: { flex: 1 },
+  labelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   category: { fontSize: 14, fontWeight: "600" },
+  incomeBadge: {
+    backgroundColor: "#D1FAE5",
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  incomeBadgeText: { fontSize: 9, fontWeight: "700", color: "#065F46" },
   note: { fontSize: 12, marginTop: 1 },
   right: { alignItems: "flex-end" },
   amount: { fontSize: 15, fontWeight: "700" },

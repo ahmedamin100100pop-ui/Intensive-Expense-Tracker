@@ -59,6 +59,7 @@ export interface CategoryBudget {
 export interface SpendingSummary {
   totalCurrentMonth: number;
   totalPreviousMonth: number;
+  totalCurrentMonthIncome: number;
   remainingBudget: number;
   percentChange: number;
   topCategory: Category | null;
@@ -85,6 +86,7 @@ interface AppContextType {
   isLoading: boolean;
   currentMonthExpenses: Expense[];
   previousMonthExpenses: Expense[];
+  currentMonthIncomeEntries: Expense[];
   restoreBackup: (data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[] }) => void;
   clearAllData: () => void;
 }
@@ -180,9 +182,11 @@ function computeSummary(
 
   const curr = expenses.filter((e) => e.date.startsWith(currKey) && !e.isIncome);
   const prev = expenses.filter((e) => e.date.startsWith(prevKey) && !e.isIncome);
+  const currIncome = expenses.filter((e) => e.date.startsWith(currKey) && e.isIncome);
 
   const totalCurrentMonth = curr.reduce((s, e) => s + e.amount, 0);
   const totalPreviousMonth = prev.reduce((s, e) => s + e.amount, 0);
+  const totalCurrentMonthIncome = currIncome.reduce((s, e) => s + e.amount, 0);
   const remainingBudget = profile.monthlyBudget - totalCurrentMonth;
   const percentChange =
     totalPreviousMonth > 0
@@ -245,6 +249,7 @@ function computeSummary(
   return {
     totalCurrentMonth,
     totalPreviousMonth,
+    totalCurrentMonthIncome,
     remainingBudget,
     percentChange,
     topCategory,
@@ -379,6 +384,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [expenses],
   );
 
+  const currentMonthIncomeEntries = useMemo(
+    () => expenses.filter((e) => e.date.startsWith(getCurrentMonthKey()) && e.isIncome),
+    [expenses],
+  );
+
   const effectiveProfile = userProfile ?? DEFAULT_PROFILE;
 
   const summary = useMemo(
@@ -400,6 +410,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         currentMonthExpenses,
         previousMonthExpenses,
+        currentMonthIncomeEntries,
         restoreBackup,
         clearAllData,
       }}

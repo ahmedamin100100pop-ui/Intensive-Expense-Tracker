@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   Platform,
   RefreshControl,
@@ -23,10 +23,15 @@ function formatCurrency(amount: number): string {
   return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
+function getCurrentMonthPrefix(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function HomeScreen() {
   const col = useColors();
   const insets = useSafeAreaInsets();
-  const { summary, userProfile, currentMonthExpenses, deleteExpense, isLoading } = useApp();
+  const { summary, userProfile, expenses, currentMonthExpenses, currentMonthIncomeEntries, deleteExpense, isLoading } = useApp();
   const [refreshing, setRefreshing] = React.useState(false);
 
   useEffect(() => {
@@ -40,6 +45,13 @@ export default function HomeScreen() {
     setTimeout(() => setRefreshing(false), 600);
   };
 
+  // Combine current-month expenses + income, sort newest first, take 5
+  const recentTransactions = useMemo(() => {
+    const prefix = getCurrentMonthPrefix();
+    const all = expenses.filter((e) => e.date.startsWith(prefix));
+    return [...all].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+  }, [expenses]);
+
   if (isLoading || !summary) return null;
 
   const pctChange = summary.percentChange;
@@ -52,7 +64,8 @@ export default function HomeScreen() {
     ? Math.round((summary.totalCurrentMonth / userProfile.monthlyBudget) * 100)
     : 0;
 
-  const recent = currentMonthExpenses.slice(0, 5);
+  const hasIncome = summary.totalCurrentMonthIncome > 0;
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
@@ -89,26 +102,61 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Hero spending card */}
-        <View style={[styles.heroCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
-          <Text style={styles.heroLabel}>Total spent this month</Text>
-          <Text style={styles.heroAmount}>{formatCurrency(summary.totalCurrentMonth)}</Text>
-          <View style={styles.heroRow}>
-            <View style={styles.heroPill}>
-              <Text style={styles.heroPillText}>{pctLabel}</Text>
+        {/* Income + Expenses balance row (if income exists) */}
+        {hasIncome ? (
+          <View style={styles.balanceRow}>
+            <View style={[styles.balanceCard, { backgroundColor: "#10B981", borderRadius: colors.radius + 4, flex: 1 }]}>
+              <Text style={styles.balanceCardLabel}>Income</Text>
+              <Text style={styles.balanceCardAmount}>{formatCurrency(summary.totalCurrentMonthIncome)}</Text>
+            </View>
+            <View style={[styles.balanceCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4, flex: 1 }]}>
+              <Text style={styles.balanceCardLabel}>Spent</Text>
+              <Text style={styles.balanceCardAmount}>{formatCurrency(summary.totalCurrentMonth)}</Text>
             </View>
           </View>
-          {userProfile && (
-            <View style={styles.budgetRow}>
-              <View style={[styles.budgetTrack, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
-                <View style={[styles.budgetFill, { width: `${Math.min(budgetPct, 100)}%`, backgroundColor: budgetPct > 90 ? "#FBBF24" : "rgba(255,255,255,0.9)" }]} />
+        ) : (
+          /* Hero spending card (no income) */
+          <View style={[styles.heroCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
+            <Text style={styles.heroLabel}>Total spent this month</Text>
+            <Text style={styles.heroAmount}>{formatCurrency(summary.totalCurrentMonth)}</Text>
+            <View style={styles.heroRow}>
+              <View style={styles.heroPill}>
+                <Text style={styles.heroPillText}>{pctLabel}</Text>
               </View>
-              <Text style={styles.budgetLabel}>
-                {formatCurrency(summary.remainingBudget)} remaining of {formatCurrency(userProfile.monthlyBudget)} budget
+            </View>
+            {userProfile && (
+              <View style={styles.budgetRow}>
+                <View style={[styles.budgetTrack, { backgroundColor: "rgba(255,255,255,0.2)" }]}>
+                  <View style={[styles.budgetFill, { width: `${Math.min(budgetPct, 100)}%`, backgroundColor: budgetPct > 90 ? "#FBBF24" : "rgba(255,255,255,0.9)" }]} />
+                </View>
+                <Text style={styles.budgetLabel}>
+                  {formatCurrency(summary.remainingBudget)} remaining of {formatCurrency(userProfile.monthlyBudget)} budget
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* When income exists: show budget progress separately */}
+        {hasIncome && userProfile && (
+          <View style={[styles.budgetCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
+            <View style={styles.budgetCardHeader}>
+              <Text style={[styles.budgetCardTitle, { color: col.foreground }]}>Budget</Text>
+              <Text style={[styles.budgetCardPct, { color: budgetPct > 90 ? col.warning : col.success }]}>
+                {budgetPct}% used
               </Text>
             </View>
-          )}
-        </View>
+            <View style={[styles.budgetTrack, { backgroundColor: col.muted }]}>
+              <View style={[
+                styles.budgetFill,
+                { width: `${Math.min(budgetPct, 100)}%`, backgroundColor: budgetPct > 90 ? col.warning : col.primary },
+              ]} />
+            </View>
+            <Text style={[styles.budgetCardSub, { color: col.mutedForeground }]}>
+              {formatCurrency(summary.remainingBudget)} remaining of {formatCurrency(userProfile.monthlyBudget)}
+            </Text>
+          </View>
+        )}
 
         {/* Stats row */}
         <View style={styles.statsRow}>
@@ -164,22 +212,22 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Recent expenses */}
+        {/* Recent transactions (income + expenses) */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: col.foreground }]}>Recent expenses</Text>
+            <Text style={[styles.sectionTitle, { color: col.foreground }]}>Recent transactions</Text>
             <TouchableOpacity onPress={() => router.push("/(tabs)/analytics")}>
               <Text style={[styles.seeAll, { color: col.primary }]}>See all</Text>
             </TouchableOpacity>
           </View>
-          {recent.length === 0 ? (
+          {recentTransactions.length === 0 ? (
             <View style={[styles.emptyState, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
               <Feather name="inbox" size={32} color={col.mutedForeground} />
-              <Text style={[styles.emptyText, { color: col.mutedForeground }]}>No expenses this month</Text>
+              <Text style={[styles.emptyText, { color: col.mutedForeground }]}>No transactions this month</Text>
               <Text style={[styles.emptySubtext, { color: col.mutedForeground }]}>Tap + to add your first one</Text>
             </View>
           ) : (
-            recent.map((e, i) => (
+            recentTransactions.map((e, i) => (
               <ExpenseCard key={e.id} expense={e} onDelete={deleteExpense} index={i} />
             ))
           )}
@@ -197,6 +245,12 @@ const styles = StyleSheet.create({
   monthLabel: { fontSize: 20, fontWeight: "700", marginTop: 2, letterSpacing: -0.5 },
   headerActions: { flexDirection: "row", gap: 8, alignItems: "center" },
   headerBtn: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+
+  balanceRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  balanceCard: { padding: 18 },
+  balanceCardLabel: { color: "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: "500", marginBottom: 4 },
+  balanceCardAmount: { color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+
   heroCard: { padding: 20, marginBottom: 14 },
   heroLabel: { color: "rgba(255,255,255,0.75)", fontSize: 13, fontWeight: "500", marginBottom: 4 },
   heroAmount: { color: "#fff", fontSize: 40, fontWeight: "800", letterSpacing: -1, marginBottom: 10 },
@@ -207,6 +261,14 @@ const styles = StyleSheet.create({
   budgetTrack: { height: 5, borderRadius: 3, overflow: "hidden" },
   budgetFill: { height: "100%", borderRadius: 3 },
   budgetLabel: { color: "rgba(255,255,255,0.7)", fontSize: 12 },
+
+  budgetCard: { padding: 14, marginBottom: 14, borderWidth: 1, gap: 8,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 3, elevation: 1 },
+  budgetCardHeader: { flexDirection: "row", justifyContent: "space-between" },
+  budgetCardTitle: { fontSize: 13, fontWeight: "600" },
+  budgetCardPct: { fontSize: 13, fontWeight: "700" },
+  budgetCardSub: { fontSize: 12 },
+
   statsRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
   statCard: { flex: 1 },
   personalityCard: { flexDirection: "row", alignItems: "center", padding: 14, marginBottom: 10, borderWidth: 1, gap: 12,
