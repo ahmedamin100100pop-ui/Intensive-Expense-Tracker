@@ -38,15 +38,16 @@ export default function SettingsScreen() {
   const [editName, setEditName] = useState(userProfile?.name ?? "");
   const [editIncome, setEditIncome] = useState(String(userProfile?.monthlyIncome ?? ""));
   const [editBudget, setEditBudget] = useState(String(userProfile?.monthlyBudget ?? ""));
+  const [editCountry, setEditCountry] = useState(userProfile?.countryCode ?? "us");
   const [profileDirty, setProfileDirty] = useState(false);
 
   const markDirty = () => setProfileDirty(true);
-  const selectedCountry = getCountryByCode(userProfile?.countryCode);
+  const selectedCountry = getCountryByCode(editCountry);
 
   const saveProfile = () => {
     if (!userProfile) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setUserProfile({ ...userProfile, name: editName.trim() || userProfile.name, monthlyIncome: parseFloat(editIncome) || userProfile.monthlyIncome, monthlyBudget: parseFloat(editBudget) || userProfile.monthlyBudget, countryCode: userProfile.countryCode ?? "us" });
+    setUserProfile({ ...userProfile, name: editName.trim() || userProfile.name, monthlyIncome: parseFloat(editIncome) || userProfile.monthlyIncome, monthlyBudget: parseFloat(editBudget) || userProfile.monthlyBudget, countryCode: editCountry });
     setProfileDirty(false);
   };
 
@@ -97,7 +98,16 @@ export default function SettingsScreen() {
     <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, padding: 0 }]}>{LANGUAGES.map((lang, i) => { const isActive = language === lang.code; const isLast = i === LANGUAGES.length - 1; return (<TouchableOpacity key={lang.code} style={[styles.langRow, !isLast && { borderBottomWidth: 1, borderBottomColor: col.border }, isActive && { backgroundColor: col.secondary }]} onPress={() => setLanguage(lang.code)} activeOpacity={0.6}><View style={styles.langContent}><Text style={[styles.langLabel, { color: col.foreground }]}>{lang.nativeLabel}</Text><Text style={[styles.langSub, { color: col.mutedForeground }]}>{lang.label}</Text></View>{isActive && <Feather name="check-circle" size={18} color={col.primary} />}</TouchableOpacity>); })}</View>
 
     <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("profile")}</Text>
-    <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border }]}><View style={styles.fieldRow}><Text style={[styles.fieldLabel, { color: col.mutedForeground }]}>{t("name")}</Text><TextInput style={[styles.fieldInput, { color: col.foreground }]} value={editName} onChangeText={(v) => { setEditName(v); markDirty(); }} placeholder={t("yourName")} placeholderTextColor={col.mutedForeground} autoCapitalize="words" /></View><View style={[styles.divider, { backgroundColor: col.border }]} /><View style={styles.fieldRow}><Text style={[styles.fieldLabel, { color: col.mutedForeground }]}>{t("monthlyIncome")}</Text><View style={styles.currencyRow}><Text style={[styles.currencySign, { color: col.mutedForeground }]}>{selectedCountry.symbol}</Text><TextInput style={[styles.fieldInput, { color: col.foreground, textAlign: "right" }]} value={editIncome} onChangeText={(v) => { setEditIncome(v); markDirty(); }} keyboardType="numeric" /></View></View><View style={[styles.divider, { backgroundColor: col.border }]} /><View style={styles.fieldRow}><Text style={[styles.fieldLabel, { color: col.mutedForeground }]}>{t("monthlyBudget")}</Text><View style={styles.currencyRow}><Text style={[styles.currencySign, { color: col.mutedForeground }]}>{selectedCountry.symbol}</Text><TextInput style={[styles.fieldInput, { color: col.foreground, textAlign: "right" }]} value={editBudget} onChangeText={(v) => { setEditBudget(v); markDirty(); }} keyboardType="numeric" /></View></View>{profileDirty && <TouchableOpacity style={[styles.saveBtn, { backgroundColor: col.primary }]} onPress={saveProfile}><Text style={styles.saveBtnText}>{t("saveChanges")}</Text></TouchableOpacity>}</View>
+    <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border }]}>
+      <View style={styles.fieldRow}><Text style={[styles.fieldLabel, { color: col.mutedForeground }]}>{t("name")}</Text><TextInput style={[styles.fieldInput, { color: col.foreground }]} value={editName} onChangeText={(v) => { setEditName(v); markDirty(); }} placeholder={t("yourName")} placeholderTextColor={col.mutedForeground} autoCapitalize="words" /></View>
+      <View style={[styles.divider, { backgroundColor: col.border }]} />
+      <View style={styles.fieldRow}><Text style={[styles.fieldLabel, { color: col.mutedForeground }]}>{t("country")}</Text><TouchableOpacity style={[styles.countryPicker, { borderColor: col.border, backgroundColor: col.background }]} onPress={() => {}} activeOpacity={0.9}><View style={styles.countryPickerLeft}><View style={[styles.countryIcon, { backgroundColor: col.primary + "18" }]}><Text style={[styles.countrySymbol, { color: col.primary }]}>{selectedCountry.symbol}</Text></View><View><Text style={[styles.countryName, { color: col.foreground }]}>{selectedCountry.nativeName}</Text><Text style={[styles.countrySub, { color: col.mutedForeground }]}>{selectedCountry.name}</Text></View></View><Feather name="chevron-down" size={16} color={col.mutedForeground} /></TouchableOpacity><View style={styles.countryGrid}>{COUNTRIES.map((country) => { const active = country.code === editCountry; return (<TouchableOpacity key={country.code} style={[styles.countryChip, { borderColor: active ? col.primary : col.border, backgroundColor: active ? col.secondary : col.card }]} onPress={() => { setEditCountry(country.code); markDirty(); Haptics.selectionAsync(); }}><Text style={[styles.countryChipSymbol, { color: active ? col.primary : col.foreground }]}>{country.symbol}</Text><Text style={[styles.countryChipText, { color: active ? col.primary : col.foreground }]}>{country.name}</Text></TouchableOpacity>); })}</View></View>
+      <View style={[styles.divider, { backgroundColor: col.border }]} />
+      <View style={styles.fieldRow}><Text style={[styles.fieldLabel, { color: col.mutedForeground }]}>{t("monthlyIncome")}</Text><View style={styles.currencyRow}><Text style={[styles.currencySign, { color: col.mutedForeground }]}>{selectedCountry.symbol}</Text><TextInput style={[styles.fieldInput, { color: col.foreground, textAlign: "right" }]} value={editIncome} onChangeText={(v) => { setEditIncome(v); markDirty(); }} keyboardType="numeric" /></View></View>
+      <View style={[styles.divider, { backgroundColor: col.border }]} />
+      <View style={styles.fieldRow}><Text style={[styles.fieldLabel, { color: col.mutedForeground }]}>{t("monthlyBudget")}</Text><View style={styles.currencyRow}><Text style={[styles.currencySign, { color: col.mutedForeground }]}>{selectedCountry.symbol}</Text><TextInput style={[styles.fieldInput, { color: col.foreground, textAlign: "right" }]} value={editBudget} onChangeText={(v) => { setEditBudget(v); markDirty(); }} keyboardType="numeric" /></View></View>
+      {profileDirty && <TouchableOpacity style={[styles.saveBtn, { backgroundColor: col.primary }]} onPress={saveProfile}><Text style={styles.saveBtnText}>{t("saveChanges")}</Text></TouchableOpacity>}
+    </View>
 
     <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("yourData")}</Text>
     <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border }]}><Row icon="upload" label={t("exportBackup")} sublabel={t("exportBackupSub")} onPress={handleExport} tint={col.primary} col={col} /><Row icon="download" label={t("importBackup")} sublabel={t("importBackupSub")} onPress={handleImport} tint={col.primary} col={col} /></View>
@@ -136,4 +146,14 @@ const styles = StyleSheet.create({
   statCard: { flex: 1, borderWidth: 1, borderRadius: colors.radius, padding: 12, alignItems: "center" },
   statVal: { fontSize: 18, fontWeight: "800" },
   statLabel: { fontSize: 11, marginTop: 2 },
+  countryPicker: { borderWidth: 1, borderRadius: colors.radius, padding: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  countryPickerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  countryIcon: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  countrySymbol: { fontSize: 12, fontWeight: "800" },
+  countryName: { fontSize: 14, fontWeight: "700" },
+  countrySub: { fontSize: 12, marginTop: 1 },
+  countryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  countryChip: { width: "48%", borderWidth: 1, borderRadius: 14, padding: 10 },
+  countryChipSymbol: { fontSize: 12, fontWeight: "800" },
+  countryChipText: { fontSize: 12, marginTop: 4, fontWeight: "600" },
 });
