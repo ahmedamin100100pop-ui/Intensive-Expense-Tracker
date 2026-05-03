@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 
+import type { LanguageCode } from "@/constants/translations";
 import type { CategoryBudget, Expense, UserProfile } from "@/context/AppContext";
 
 const BACKUP_VERSION = 1;
@@ -8,6 +9,8 @@ export interface BackupData {
   version: number;
   exportedAt: string;
   appName: string;
+  language?: LanguageCode;
+  countryCode?: string;
   expenses: Expense[];
   userProfile: UserProfile | null;
   categoryBudgets: CategoryBudget[];
@@ -139,11 +142,14 @@ export async function exportBackup(
   expenses: Expense[],
   userProfile: UserProfile | null,
   categoryBudgets: CategoryBudget[],
+  language: LanguageCode = "en",
 ): Promise<void> {
   const payload: BackupData = {
     version: BACKUP_VERSION,
     appName: "Intensive",
     exportedAt: new Date().toISOString(),
+    language,
+    countryCode: userProfile?.countryCode,
     expenses,
     userProfile,
     categoryBudgets,

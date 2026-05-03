@@ -269,9 +269,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     void persist(expenses, userProfile, next);
   }, [categoryBudgets, expenses, userProfile, persist]);
 
-  const restoreBackup = useCallback((data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[] }) => {
+  const restoreBackup = useCallback((data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[]; countryCode?: string }) => {
     setExpenses(data.expenses);
-    setUserProfileState(data.userProfile);
+    setUserProfileState(data.userProfile ? { ...data.userProfile, countryCode: data.userProfile.countryCode ?? data.countryCode ?? data.userProfile.countryCode } : null);
     setCategoryBudgets(data.categoryBudgets);
     void persist(data.expenses, data.userProfile, data.categoryBudgets);
   }, [persist]);

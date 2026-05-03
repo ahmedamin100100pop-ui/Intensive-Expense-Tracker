@@ -55,7 +55,7 @@ export default function SettingsScreen() {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setStatus("exporting");
-      await exportBackup(expenses, userProfile, categoryBudgets);
+      await exportBackup(expenses, userProfile, categoryBudgets, language);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unknown error";
       Alert.alert(t("exportFailedTitle"), msg);
