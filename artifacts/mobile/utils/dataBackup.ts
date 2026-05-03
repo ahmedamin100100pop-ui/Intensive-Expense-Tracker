@@ -85,11 +85,10 @@ async function nativeExport(jsonStr: string, fileName: string): Promise<void> {
     import("expo-sharing"),
   ]);
 
-  const fileUri =
-    (FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? "") + fileName;
+  const fileUri = `${FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? ""}${fileName}`;
 
   await FileSystem.writeAsStringAsync(fileUri, jsonStr, {
-    encoding: FileSystem.EncodingType.UTF8,
+    encoding: "utf8",
   });
 
   const canShare = await Sharing.isAvailableAsync();
@@ -117,7 +116,7 @@ async function nativeImport(): Promise<BackupData> {
   }
 
   const raw = await FileSystem.readAsStringAsync(result.assets[0].uri, {
-    encoding: FileSystem.EncodingType.UTF8,
+    encoding: "utf8",
   });
 
   let data: BackupData;

@@ -2,14 +2,9 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 
+import { getCountryByCode, getCategoryLabelForLang, type LanguageCode } from "@/constants/translations";
+import { useLanguage } from "@/context/LanguageContext";
 import type { Category, Expense, UserProfile } from "@/context/AppContext";
-
-const CATEGORY_LABELS: Record<Category, string> = {
-  food: "Food", transport: "Transport", shopping: "Shopping",
-  rent: "Rent", bills: "Bills", health: "Health",
-  entertainment: "Entertainment", education: "Education",
-  travel: "Travel", family: "Family", other: "Other",
-};
 
 const CATEGORY_COLORS: Record<Category, string> = {
   food: "#F97316", transport: "#3B82F6", shopping: "#EC4899",
@@ -18,17 +13,28 @@ const CATEGORY_COLORS: Record<Category, string> = {
   family: "#10B981", other: "#6B7280",
 };
 
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: "Cash", card: "Card", bank: "Bank Transfer", wallet: "Wallet",
+const PAYMENT_LABELS: Record<LanguageCode, Record<string, string>> = {
+  en: {
+    cash: "Cash",
+    card: "Card",
+    bank: "Bank Transfer",
+    wallet: "Wallet",
+  },
+  ar: {
+    cash: "نقدًا",
+    card: "بطاقة",
+    bank: "تحويل بنكي",
+    wallet: "محفظة",
+  },
 };
 
-function formatCurrency(amount: number): string {
-  return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatCurrency(amount: number, symbol: string, locale: string): string {
+  return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, locale: string): string {
   const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return d.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
 interface PDFOptions {
@@ -42,6 +48,9 @@ interface PDFOptions {
 export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
   const { expenses, userProfile, periodLabel, periodType, monthlyData } = opts;
   const userName = userProfile?.name?.trim() || "Intensive User";
+  const language: LanguageCode = useLanguage ? "en" : "en";
+  const locale = language === "ar" ? "ar-SA" : "en-US";
+  const currency = getCountryByCode(userProfile?.countryCode).symbol;
   const total = expenses.reduce((s, e) => s + e.amount, 0);
 
   // Category totals
@@ -59,7 +68,7 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
   })();
 
   const topCat = sortedCats[0]?.[0];
-  const generatedAt = new Date().toLocaleDateString("en-US", {
+  const generatedAt = new Date().toLocaleDateString(locale, {
     month: "long", day: "numeric", year: "numeric",
   });
 
@@ -72,10 +81,10 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
         <div class="cat-header">
           <div class="cat-name">
             <span class="cat-dot" style="background:${color}"></span>
-            ${CATEGORY_LABELS[cat]}
+            ${getCategoryLabelForLang(cat, language)}
           </div>
           <div class="cat-right">
-            <span class="cat-amount">${formatCurrency(amount)}</span>
+            <span class="cat-amount">${formatCurrency(amount, currency, locale)}</span>
             <span class="cat-pct">${pct.toFixed(1)}%</span>
           </div>
         </div>
@@ -93,15 +102,15 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
       const rowClass = i % 2 === 1 ? 'class="row-alt"' : "";
       return `
         <tr ${rowClass}>
-          <td>${formatDate(e.date)}</td>
+          <td>${formatDate(e.date, locale)}</td>
           <td>
             <span class="badge" style="background:${color}22;color:${color}">
-              ${CATEGORY_LABELS[e.category]}
+              ${getCategoryLabelForLang(e.category, language)}
             </span>
           </td>
           <td>${e.note || "—"}</td>
-          <td>${PAYMENT_LABELS[e.paymentMethod] ?? e.paymentMethod}</td>
-          <td class="td-amount">${formatCurrency(e.amount)}</td>
+          <td>${PAYMENT_LABELS[language][e.paymentMethod] ?? e.paymentMethod}</td>
+          <td class="td-amount">${formatCurrency(e.amount, currency, locale)}</td>
         </tr>`;
     }).join("");
 
@@ -113,14 +122,14 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
       const heightPct = Math.max((d.amount / maxVal) * 100, 3);
       return `
         <div class="bar-col">
-          <div class="bar-val">${d.amount >= 1000 ? `$${(d.amount / 1000).toFixed(1)}k` : `$${d.amount.toFixed(0)}`}</div>
+          <div class="bar-val">${d.amount >= 1000 ? `${currency}${(d.amount / 1000).toFixed(1)}k` : `${currency}${d.amount.toFixed(0)}`}</div>
           <div class="bar-fill" style="height:${heightPct}%;background:#4F46E5;opacity:${d.amount === maxVal ? 1 : 0.55}"></div>
           <div class="bar-label">${d.label}</div>
         </div>`;
     }).join("");
     barChartHTML = `
       <div class="section">
-        <div class="section-title">Spending over time</div>
+        <div class="section-title">${language === "ar" ? "الإنفاق عبر الوقت" : "Spending over time"}</div>
         <div class="bar-chart">${bars}</div>
       </div>`;
   }
@@ -129,33 +138,33 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
   const statsHTML = `
     <div class="stats-grid">
       <div class="stat-box">
-        <div class="stat-value">${formatCurrency(total)}</div>
-        <div class="stat-label">Total Spent</div>
+        <div class="stat-value">${formatCurrency(total, currency, locale)}</div>
+        <div class="stat-label">${language === "ar" ? "إجمالي الإنفاق" : "Total Spent"}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value">${expenses.length}</div>
-        <div class="stat-label">Transactions</div>
+        <div class="stat-label">${language === "ar" ? "العمليات" : "Transactions"}</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value">${formatCurrency(avgDaily)}</div>
-        <div class="stat-label">Avg per Day</div>
+        <div class="stat-value">${formatCurrency(avgDaily, currency, locale)}</div>
+        <div class="stat-label">${language === "ar" ? "المتوسط اليومي" : "Avg per Day"}</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value">${topCat ? CATEGORY_LABELS[topCat] : "—"}</div>
-        <div class="stat-label">Top Category</div>
+        <div class="stat-value">${topCat ? getCategoryLabelForLang(topCat, language) : "—"}</div>
+        <div class="stat-label">${language === "ar" ? "أعلى فئة" : "Top Category"}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value">${sortedCats.length}</div>
-        <div class="stat-label">Categories</div>
+        <div class="stat-label">${language === "ar" ? "الفئات" : "Categories"}</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value">${topCat ? formatCurrency(catTotals[topCat] ?? 0) : "—"}</div>
-        <div class="stat-label">Top Spent</div>
+        <div class="stat-value">${topCat ? formatCurrency(catTotals[topCat] ?? 0, currency, locale) : "—"}</div>
+        <div class="stat-label">${language === "ar" ? "أعلى إنفاق" : "Top Spent"}</div>
       </div>
     </div>`;
 
   const html = `<!DOCTYPE html>
-<html lang="en">
+<html lang="${language}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -228,18 +237,18 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
   <div class="header">
     <div class="header-eyebrow">
       <span class="header-dot"></span>
-      Intensive · Spending Report
+      ${language === "ar" ? "Intensive · التقرير الشهري" : "Intensive · Spending Report"}
     </div>
     <div class="header-name">${userName}</div>
     <div class="header-period">${periodLabel}</div>
-    <div class="header-amount">${formatCurrency(total)}</div>
-    <div class="header-sublabel">Total spent in this period</div>
+    <div class="header-amount">${formatCurrency(total, currency, locale)}</div>
+    <div class="header-sublabel">${language === "ar" ? "إجمالي الإنفاق في هذه الفترة" : "Total spent in this period"}</div>
   </div>
 
   <div class="content">
 
     <div class="section">
-      <div class="section-title">Summary</div>
+      <div class="section-title">${language === "ar" ? "الملخص" : "Summary"}</div>
       ${statsHTML}
     </div>
 
@@ -247,13 +256,13 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
 
     ${sortedCats.length > 0 ? `
     <div class="section">
-      <div class="section-title">Spending by category</div>
+      <div class="section-title">${language === "ar" ? "الإنفاق حسب الفئة" : "Spending by category"}</div>
       ${categoryRowsHTML}
     </div>` : ""}
 
     ${expenses.length > 0 ? `
     <div class="section">
-      <div class="section-title">All transactions (${expenses.length})</div>
+      <div class="section-title">${language === "ar" ? `كل العمليات (${expenses.length})` : `All transactions (${expenses.length})`}</div>
       <div class="table-wrap">
         <table>
           <thead>
