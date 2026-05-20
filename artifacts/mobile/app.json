@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "Intensive",
-    "slug": "mobile",
+    "slug": "intensive",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "intensive",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,14 +15,15 @@
     },
     "ios": {
       "supportsTablet": false,
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.intensive.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
       },
-      "package": "com.ahmedameen01.mobile"
+      "package": "com.intensive.app"
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -40,11 +41,6 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "432a82d6-e11c-424f-97d2-692a88f65a69"
-      }
     }
   }
 }
