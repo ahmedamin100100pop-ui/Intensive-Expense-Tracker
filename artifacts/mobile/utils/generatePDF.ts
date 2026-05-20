@@ -162,8 +162,13 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
       </div>
     </div>`;
 
+  const dir = language === "ar" ? "rtl" : "ltr";
+  const tableHeaders = language === "ar"
+    ? { date: "التاريخ", category: "الفئة", note: "الملاحظة", method: "طريقة الدفع", amount: "المبلغ" }
+    : { date: "Date", category: "Category", note: "Note", method: "Method", amount: "Amount" };
+
   const html = `<!DOCTYPE html>
-<html lang="${language}">
+<html lang="${language}" dir="${dir}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -266,11 +271,11 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Category</th>
-              <th>Note</th>
-              <th>Method</th>
-              <th style="text-align:right">Amount</th>
+              <th>${tableHeaders.date}</th>
+              <th>${tableHeaders.category}</th>
+              <th>${tableHeaders.note}</th>
+              <th>${tableHeaders.method}</th>
+              <th style="text-align:${language === "ar" ? "left" : "right"}">${tableHeaders.amount}</th>
             </tr>
           </thead>
           <tbody>

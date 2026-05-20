@@ -1,3 +1,6 @@
+import * as DocumentPicker from "expo-document-picker";
+import { File, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 
 import type { LanguageCode } from "@/constants/translations";
@@ -60,7 +63,6 @@ function webPickJsonFile(): Promise<BackupData> {
       reader.readAsText(file);
     };
 
-    // Handle cancel (no file selected)
     window.addEventListener(
       "focus",
       () => {
@@ -82,21 +84,19 @@ function webPickJsonFile(): Promise<BackupData> {
 // ── Native helpers ────────────────────────────────────────────────────────────
 
 async function nativeExport(jsonStr: string, fileName: string): Promise<void> {
-  const Sharing = await import("expo-sharing");
-
   const canShare = await Sharing.isAvailableAsync();
   if (!canShare) throw new Error("Sharing is not available on this device.");
 
-  const fileUri = `data:application/json;charset=utf-8,${encodeURIComponent(jsonStr)}`;
-  await Sharing.shareAsync(fileUri, {
+  const file = new File(Paths.cache, fileName);
+  file.write(jsonStr);
+
+  await Sharing.shareAsync(file.uri, {
     mimeType: "application/json",
     dialogTitle: `Intensive Backup – ${fileName}`,
   });
 }
 
 async function nativeImport(): Promise<BackupData> {
-  const DocumentPicker = await import("expo-document-picker");
-
   const result = await DocumentPicker.getDocumentAsync({
     type: ["application/json", "text/plain", "*/*"],
     copyToCacheDirectory: true,
@@ -106,8 +106,8 @@ async function nativeImport(): Promise<BackupData> {
     throw new Error("CANCELLED");
   }
 
-  const response = await fetch(result.assets[0].uri);
-  const raw = await response.text();
+  const picked = new File(result.assets[0].uri);
+  const raw = await picked.text();
 
   let data: BackupData;
   try {

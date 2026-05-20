@@ -163,7 +163,7 @@ export default function AnalyticsScreen() {
     }
     try {
       setExporting(true);
-      await generateAndSharePDF({ expenses: filtered, userProfile, periodLabel, periodType, monthlyData: monthlyDataForPDF });
+      await generateAndSharePDF({ expenses: filtered, userProfile, language, periodLabel, periodType, monthlyData: monthlyDataForPDF });
     } catch {
       Alert.alert(t("exportFailed"), t("couldNotGeneratePDF"));
     } finally {

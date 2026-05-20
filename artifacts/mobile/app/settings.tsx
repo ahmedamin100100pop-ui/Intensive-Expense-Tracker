@@ -71,6 +71,9 @@ export default function SettingsScreen() {
         setStatus("importing");
         const data = await importBackup();
         restoreBackup(data);
+        if (data.language && data.language !== language) {
+          await setLanguage(data.language);
+        }
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         const dateStr = new Date(data.exportedAt).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US", { month: "long", day: "numeric", year: "numeric" });
         const msg = data.expenses.length === 1 ? t("importSuccessMsg", { count: data.expenses.length, date: dateStr }) : t("importSuccessMsgPlural", { count: data.expenses.length, date: dateStr });

@@ -31,7 +31,6 @@ export function BudgetProgressCard({ category, budgetAmount, spentAmount, langua
 
   const barColor = isOver ? col.destructive : isWarning ? col.warning : col.primary;
   const barWidth = anim.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] });
-  const currency = getCountryByCode(countryCode).symbol;
 
   const statusText = language === "ar"
     ? isOver

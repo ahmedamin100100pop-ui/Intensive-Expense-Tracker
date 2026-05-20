@@ -88,7 +88,7 @@ interface AppContextType {
   currentMonthExpenses: Expense[];
   previousMonthExpenses: Expense[];
   currentMonthIncomeEntries: Expense[];
-  restoreBackup: (data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[] }) => void;
+  restoreBackup: (data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[]; countryCode?: string }) => void;
   clearAllData: () => void;
 }
 
@@ -270,10 +270,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [categoryBudgets, expenses, userProfile, persist]);
 
   const restoreBackup = useCallback((data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[]; countryCode?: string }) => {
+    const restoredProfile = data.userProfile
+      ? { ...data.userProfile, countryCode: data.userProfile.countryCode ?? data.countryCode }
+      : null;
     setExpenses(data.expenses);
-    setUserProfileState(data.userProfile ? { ...data.userProfile, countryCode: data.userProfile.countryCode ?? data.countryCode ?? data.userProfile.countryCode } : null);
+    setUserProfileState(restoredProfile);
     setCategoryBudgets(data.categoryBudgets);
-    void persist(data.expenses, data.userProfile, data.categoryBudgets);
+    void persist(data.expenses, restoredProfile, data.categoryBudgets);
   }, [persist]);
 
   const clearAllData = useCallback(() => {
