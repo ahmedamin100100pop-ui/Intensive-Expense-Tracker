@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { InsightCard } from "@/components/InsightCard";
 import type { InsightType } from "@/components/InsightCard";
+import { SmartBudgetSection } from "@/components/SmartBudgetSection";
 import { getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
 import { useApp } from "@/context/AppContext";
@@ -215,6 +216,8 @@ export default function InsightsScreen() {
             />
           ))
         )}
+
+        <SmartBudgetSection />
       </ScrollView>
     </View>
   );
