@@ -95,7 +95,7 @@ export default function InsightsScreen() {
         .join(", ");
       list.push({
         id: "unusual",
-        title: count === 1 ? t("insightUnusualTitle") : t("insightUnusualTitlePlural", { count }),
+        title: count === 1 ? t("insightUnusualTitle", { count }) : t("insightUnusualTitlePlural", { count }),
         description: t("insightUnusualDesc", {
           desc: count === 1 ? t("insightUnusualDescOne") : t("insightUnusualDescMany"),
           items,
