@@ -7,23 +7,19 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import colors from "@/constants/colors";
 import { getCurrencySymbolForCountry } from "@/constants/translations";
 import { useApp } from "@/context/AppContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
 import { computeSmartBudgetSuggestions } from "@/utils/smartBudgetEngine";
 import type { BudgetSuggestion, RiskLevel } from "@/utils/smartBudgetEngine";
 
-// ── Risk badge config ─────────────────────────────────────────────────────────
-
-const RISK_CONFIG: Record<RiskLevel, { label: string; color: string; bg: string; darkBg: string }> = {
-  low:    { label: "ثقة عالية",  color: "#059669", bg: "#D1FAE5", darkBg: "#064E3B" },
-  medium: { label: "ثقة متوسطة", color: "#D97706", bg: "#FEF3C7", darkBg: "#451A03" },
-  high:   { label: "بيانات محدودة", color: "#7C3AED", bg: "#F5F3FF", darkBg: "#2E1065" },
-};
+// ── Category icons & colours (language-independent) ──────────────────────────
 
 const CATEGORY_ICONS: Record<string, keyof typeof MaterialCommunityIcons.glyphMap> = {
   food:          "food-fork-drink",
@@ -69,30 +65,45 @@ function SuggestionCard({
   index: number;
 }) {
   const col = useColors();
-  const risk = RISK_CONFIG[suggestion.riskLevel];
+  const { t, language } = useLanguage();
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
+
+  const riskConfig: Record<RiskLevel, { label: string; color: string; bg: string }> = {
+    low:    { label: t("smartBudgetConfidenceHigh"),   color: "#059669", bg: isDark ? "#064E3B" : "#D1FAE5" },
+    medium: { label: t("smartBudgetConfidenceMedium"), color: "#D97706", bg: isDark ? "#451A03" : "#FEF3C7" },
+    high:   { label: t("smartBudgetConfidenceLow"),    color: "#7C3AED", bg: isDark ? "#2E1065" : "#F5F3FF" },
+  };
+
+  const risk = riskConfig[suggestion.riskLevel];
   const catColor = CATEGORY_COLORS[suggestion.category] ?? col.primary;
   const catIcon = CATEGORY_ICONS[suggestion.category] ?? "circle-outline";
   const saving = Math.abs(suggestion.changeAmount);
   const savingLabel = suggestion.isSaving
-    ? `وفّر ${symbol}${saving.toFixed(0)} شهرياً`
-    : `زيادة ${symbol}${saving.toFixed(0)} شهرياً`;
+    ? t("smartBudgetSavePill",     { symbol, amount: saving.toFixed(0) })
+    : t("smartBudgetIncreasePill", { symbol, amount: saving.toFixed(0) });
   const deltaColor = suggestion.isSaving ? col.success : col.warning;
 
-  // Progress bar: show recommended vs current as a proportion
   const barMax = Math.max(suggestion.currentBudget, suggestion.recommendedBudget);
   const currentPct = suggestion.currentBudget / barMax;
   const recommendedPct = suggestion.recommendedBudget / barMax;
+
+  const monthWord = suggestion.monthsAnalyzed === 1
+    ? t("smartBudgetMonthSingular")
+    : t("smartBudgetMonthPlural");
+
+  const isRTL = language === "ar";
 
   return (
     <Animated.View entering={FadeInDown.delay(index * 80).springify()}>
       <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
 
-        {/* Header: category + risk badge */}
-        <View style={styles.cardHeader}>
+        {/* Header */}
+        <View style={[styles.cardHeader, isRTL && styles.rowReverse]}>
           <View style={[styles.catIconWrap, { backgroundColor: catColor + "18" }]}>
             <MaterialCommunityIcons name={catIcon} size={18} color={catColor} />
           </View>
-          <Text style={[styles.catName, { color: col.foreground }]}>{suggestion.arabicCategoryName}</Text>
+          <Text style={[styles.catName, { color: col.foreground }]}>{suggestion.categoryName}</Text>
           <View style={{ flex: 1 }} />
           <View style={[styles.badge, { backgroundColor: risk.bg }]}>
             <Text style={[styles.badgeText, { color: risk.color }]}>{risk.label}</Text>
@@ -100,10 +111,12 @@ function SuggestionCard({
         </View>
 
         {/* Budget comparison row */}
-        <View style={styles.budgetRow}>
+        <View style={[styles.budgetRow, isRTL && styles.rowReverse]}>
           <View style={styles.budgetItem}>
-            <Text style={[styles.budgetLabel, { color: col.mutedForeground }]}>الميزانية الحالية</Text>
-            <Text style={[styles.budgetAmount, { color: col.foreground }]}>
+            <Text style={[styles.budgetLabel, { color: col.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
+              {t("smartBudgetCurrentBudget")}
+            </Text>
+            <Text style={[styles.budgetAmount, { color: col.foreground, textAlign: isRTL ? "right" : "left" }]}>
               {symbol}{suggestion.currentBudget.toFixed(0)}
             </Text>
           </View>
@@ -117,8 +130,10 @@ function SuggestionCard({
           </View>
 
           <View style={[styles.budgetItem, styles.budgetItemRight]}>
-            <Text style={[styles.budgetLabel, { color: col.mutedForeground }]}>الموصى بها</Text>
-            <Text style={[styles.budgetAmount, { color: col.primary, fontWeight: "800" }]}>
+            <Text style={[styles.budgetLabel, { color: col.mutedForeground, textAlign: isRTL ? "left" : "right" }]}>
+              {t("smartBudgetRecommended")}
+            </Text>
+            <Text style={[styles.budgetAmount, { color: col.primary, fontWeight: "800", textAlign: isRTL ? "left" : "right" }]}>
               {symbol}{suggestion.recommendedBudget.toFixed(0)}
             </Text>
           </View>
@@ -132,14 +147,14 @@ function SuggestionCard({
           <View style={[styles.barTrack, { backgroundColor: col.muted, marginTop: 4 }]}>
             <View style={[styles.barFill, { width: `${recommendedPct * 100}%`, backgroundColor: col.primary }]} />
           </View>
-          <View style={styles.barLabels}>
-            <Text style={[styles.barLabelText, { color: col.mutedForeground }]}>الحالي</Text>
-            <Text style={[styles.barLabelText, { color: col.primary }]}>الموصى</Text>
+          <View style={[styles.barLabels, isRTL && styles.rowReverse]}>
+            <Text style={[styles.barLabelText, { color: col.mutedForeground }]}>{t("smartBudgetCurrentBar")}</Text>
+            <Text style={[styles.barLabelText, { color: col.primary }]}>{t("smartBudgetRecommendedBar")}</Text>
           </View>
         </View>
 
         {/* Delta pill */}
-        <View style={[styles.deltaPill, { backgroundColor: deltaColor + "15" }]}>
+        <View style={[styles.deltaPill, { backgroundColor: deltaColor + "15" }, isRTL && styles.rowReverse]}>
           <Feather
             name={suggestion.isSaving ? "trending-down" : "trending-up"}
             size={13}
@@ -151,21 +166,26 @@ function SuggestionCard({
           </Text>
         </View>
 
-        {/* Arabic reason */}
-        <Text style={[styles.reason, { color: col.mutedForeground }]}>
-          {suggestion.arabicReason}
+        {/* Reason */}
+        <Text style={[styles.reason, { color: col.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
+          {suggestion.reason}
         </Text>
 
         {/* Data info */}
-        <Text style={[styles.dataInfo, { color: col.mutedForeground }]}>
-          بناءً على {suggestion.monthsAnalyzed} {suggestion.monthsAnalyzed === 1 ? "شهر" : "أشهر"} · متوسط إنفاقك: {symbol}{suggestion.avgMonthlySpent.toFixed(0)}
+        <Text style={[styles.dataInfo, { color: col.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
+          {t("smartBudgetDataInfo", {
+            months: suggestion.monthsAnalyzed,
+            monthWord,
+            symbol,
+            avg: suggestion.avgMonthlySpent.toFixed(0),
+          })}
         </Text>
 
         {/* Apply button */}
         {applied ? (
-          <View style={[styles.appliedBadge, { backgroundColor: col.success + "18" }]}>
+          <View style={[styles.appliedBadge, { backgroundColor: col.success + "18" }, isRTL && styles.rowReverse]}>
             <Feather name="check-circle" size={15} color={col.success} />
-            <Text style={[styles.appliedText, { color: col.success }]}>تم التطبيق</Text>
+            <Text style={[styles.appliedText, { color: col.success }]}>{t("smartBudgetApplied")}</Text>
           </View>
         ) : (
           <TouchableOpacity
@@ -174,7 +194,7 @@ function SuggestionCard({
             activeOpacity={0.7}
           >
             <Feather name="check" size={14} color={col.primary} />
-            <Text style={[styles.applyBtnText, { color: col.primary }]}>تطبيق الاقتراح</Text>
+            <Text style={[styles.applyBtnText, { color: col.primary }]}>{t("smartBudgetApply")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -186,17 +206,23 @@ function SuggestionCard({
 
 export function SmartBudgetSection() {
   const col = useColors();
+  const { t, language } = useLanguage();
   const { expenses, categoryBudgets, userProfile, setCategoryBudget } = useApp();
   const [appliedCategories, setAppliedCategories] = useState<Set<string>>(new Set());
 
   const symbol = getCurrencySymbolForCountry(userProfile?.countryCode);
+  const isRTL = language === "ar";
 
   const result = useMemo(
-    () => computeSmartBudgetSuggestions(expenses, categoryBudgets, userProfile),
-    [expenses, categoryBudgets, userProfile],
+    () => computeSmartBudgetSuggestions(expenses, categoryBudgets, userProfile, language),
+    [expenses, categoryBudgets, userProfile, language],
   );
 
   const { suggestions, totalMonthlySaving, monthsAnalyzed, wasIncomeCapped } = result;
+
+  const monthWord = monthsAnalyzed === 1
+    ? t("smartBudgetMonthSingular")
+    : t("smartBudgetMonthPlural");
 
   const handleApply = (suggestion: BudgetSuggestion) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -209,12 +235,14 @@ export function SmartBudgetSection() {
     if (pending.length === 0) return;
 
     Alert.alert(
-      "تطبيق جميع الاقتراحات",
-      `سيتم تحديث ${pending.length} ${pending.length === 1 ? "فئة" : "فئات"} بالقيم الموصى بها. هل تريد المتابعة؟`,
+      t("smartBudgetApplyAll", { count: pending.length }),
+      language === "ar"
+        ? `سيتم تحديث ${pending.length} فئة بالقيم الموصى بها. هل تريد المتابعة؟`
+        : `This will update ${pending.length} ${pending.length === 1 ? "category" : "categories"} with recommended values. Continue?`,
       [
-        { text: "إلغاء", style: "cancel" },
+        { text: t("cancel"), style: "cancel" },
         {
-          text: "تطبيق الكل",
+          text: language === "ar" ? "تطبيق الكل" : "Apply all",
           onPress: () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             const newApplied = new Set(appliedCategories);
@@ -231,28 +259,27 @@ export function SmartBudgetSection() {
 
   const allApplied = suggestions.length > 0 && suggestions.every((sg) => appliedCategories.has(sg.category));
   const pendingCount = suggestions.filter((sg) => !appliedCategories.has(sg.category)).length;
-
-  // ── Empty / insufficient data state ────────────────────────────────────────
-
   const isEmpty = suggestions.length === 0;
 
   return (
     <View style={styles.section}>
 
       {/* Section header */}
-      <Animated.View entering={FadeInDown.delay(0).springify()} style={styles.sectionHeaderRow}>
+      <Animated.View entering={FadeInDown.delay(0).springify()} style={[styles.sectionHeaderRow, isRTL && styles.rowReverse]}>
         <View style={[styles.sectionIconWrap, { backgroundColor: col.primary + "15" }]}>
           <MaterialCommunityIcons name="brain" size={18} color={col.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.sectionTitle, { color: col.foreground }]}>اقتراحات الميزانية الذكية</Text>
-          <Text style={[styles.sectionSub, { color: col.mutedForeground }]}>
-            تحليل محلي · آخر {monthsAnalyzed} {monthsAnalyzed === 1 ? "شهر" : "أشهر"} · بدون إنترنت
+          <Text style={[styles.sectionTitle, { color: col.foreground, textAlign: isRTL ? "right" : "left" }]}>
+            {t("smartBudgetTitle")}
+          </Text>
+          <Text style={[styles.sectionSub, { color: col.mutedForeground, textAlign: isRTL ? "right" : "left" }]}>
+            {t("smartBudgetSub", { months: monthsAnalyzed, monthWord })}
           </Text>
         </View>
-        <View style={[styles.offlineBadge, { backgroundColor: col.success + "15" }]}>
+        <View style={[styles.offlineBadge, { backgroundColor: col.success + "15" }, isRTL && styles.rowReverse]}>
           <Feather name="wifi-off" size={11} color={col.success} />
-          <Text style={[styles.offlineBadgeText, { color: col.success }]}>أوفلاين</Text>
+          <Text style={[styles.offlineBadgeText, { color: col.success }]}>{t("smartBudgetOffline")}</Text>
         </View>
       </Animated.View>
 
@@ -261,31 +288,35 @@ export function SmartBudgetSection() {
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           <View style={[styles.emptyCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}>
             <MaterialCommunityIcons name="check-decagram" size={32} color={col.success} />
-            <Text style={[styles.emptyTitle, { color: col.foreground }]}>ميزانيتك محسّنة بالفعل</Text>
-            <Text style={[styles.emptySub, { color: col.mutedForeground }]}>
-              لا توجد تعديلات مقترحة حالياً — استمر في تسجيل مصروفاتك لتحسين دقة التحليل
-            </Text>
+            <Text style={[styles.emptyTitle, { color: col.foreground }]}>{t("smartBudgetOptimizedTitle")}</Text>
+            <Text style={[styles.emptySub, { color: col.mutedForeground }]}>{t("smartBudgetOptimizedSub")}</Text>
           </View>
         </Animated.View>
       ) : (
         <>
           {/* Summary banner */}
           <Animated.View entering={FadeInDown.delay(60).springify()}>
-            <View style={[styles.summaryBanner, { backgroundColor: col.primary, borderRadius: colors.radius }]}>
+            <View style={[styles.summaryBanner, { backgroundColor: col.primary, borderRadius: colors.radius }, isRTL && styles.rowReverse]}>
               <View style={styles.summaryLeft}>
-                <Text style={styles.summaryLabel}>إجمالي التوفير المحتمل</Text>
-                <Text style={styles.summaryAmount}>{symbol}{totalMonthlySaving.toFixed(0)}</Text>
-                <Text style={styles.summaryPer}>شهرياً</Text>
+                <Text style={[styles.summaryLabel, { textAlign: isRTL ? "right" : "left" }]}>
+                  {t("smartBudgetPotentialSaving")}
+                </Text>
+                <Text style={[styles.summaryAmount, { textAlign: isRTL ? "right" : "left" }]}>
+                  {symbol}{totalMonthlySaving.toFixed(0)}
+                </Text>
+                <Text style={[styles.summaryPer, { textAlign: isRTL ? "right" : "left" }]}>
+                  {t("smartBudgetPerMonth")}
+                </Text>
               </View>
               <View style={styles.summaryRight}>
                 <View style={styles.summaryStatRow}>
                   <Text style={styles.summaryStatVal}>{suggestions.length}</Text>
-                  <Text style={styles.summaryStatLabel}>اقتراح</Text>
+                  <Text style={styles.summaryStatLabel}>{t("smartBudgetSuggestionsLabel")}</Text>
                 </View>
-                <View style={[styles.summaryDivider]} />
+                <View style={styles.summaryDivider} />
                 <View style={styles.summaryStatRow}>
                   <Text style={styles.summaryStatVal}>{monthsAnalyzed}</Text>
-                  <Text style={styles.summaryStatLabel}>أشهر بيانات</Text>
+                  <Text style={styles.summaryStatLabel}>{t("smartBudgetDataMonths")}</Text>
                 </View>
               </View>
             </View>
@@ -294,10 +325,10 @@ export function SmartBudgetSection() {
           {/* Income cap notice */}
           {wasIncomeCapped && (
             <Animated.View entering={FadeInDown.delay(80).springify()}>
-              <View style={[styles.noticeBanner, { backgroundColor: col.warning + "12", borderColor: col.warning + "30", borderRadius: colors.radius }]}>
+              <View style={[styles.noticeBanner, { backgroundColor: col.warning + "12", borderColor: col.warning + "30", borderRadius: colors.radius }, isRTL && styles.rowReverse]}>
                 <Feather name="info" size={14} color={col.warning} />
                 <Text style={[styles.noticeText, { color: col.warning }]}>
-                  تم تعديل الاقتراحات لتناسب دخلك الشهري
+                  {t("smartBudgetIncomeCapped")}
                 </Text>
               </View>
             </Animated.View>
@@ -315,25 +346,25 @@ export function SmartBudgetSection() {
             />
           ))}
 
-          {/* Apply all button */}
+          {/* Apply all / all applied */}
           {!allApplied ? (
             <Animated.View entering={FadeInDown.delay((suggestions.length + 1) * 80).springify()}>
               <TouchableOpacity
-                style={[styles.applyAllBtn, { backgroundColor: col.primary }]}
+                style={[styles.applyAllBtn, { backgroundColor: col.primary }, isRTL && styles.rowReverse]}
                 onPress={handleApplyAll}
                 activeOpacity={0.85}
               >
                 <Feather name="check-square" size={18} color="#fff" />
                 <Text style={styles.applyAllText}>
-                  تطبيق جميع الاقتراحات{pendingCount > 0 ? ` (${pendingCount})` : ""}
+                  {t("smartBudgetApplyAll", { count: pendingCount })}
                 </Text>
               </TouchableOpacity>
             </Animated.View>
           ) : (
             <Animated.View entering={FadeInDown.springify()}>
-              <View style={[styles.allAppliedRow, { backgroundColor: col.success + "12", borderRadius: colors.radius }]}>
+              <View style={[styles.allAppliedRow, { backgroundColor: col.success + "12", borderRadius: colors.radius }, isRTL && styles.rowReverse]}>
                 <Feather name="check-circle" size={18} color={col.success} />
-                <Text style={[styles.allAppliedText, { color: col.success }]}>تم تطبيق جميع الاقتراحات</Text>
+                <Text style={[styles.allAppliedText, { color: col.success }]}>{t("smartBudgetAllApplied")}</Text>
               </View>
             </Animated.View>
           )}
@@ -347,6 +378,7 @@ export function SmartBudgetSection() {
 
 const styles = StyleSheet.create({
   section: { marginTop: 28 },
+  rowReverse: { flexDirection: "row-reverse" },
 
   sectionHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 12 },
   sectionIconWrap: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
@@ -373,7 +405,6 @@ const styles = StyleSheet.create({
   noticeBanner: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderWidth: 1, marginBottom: 10 },
   noticeText: { fontSize: 13, fontWeight: "500", flex: 1 },
 
-  // Card
   card: {
     padding: 16, marginBottom: 12, borderWidth: 1,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,

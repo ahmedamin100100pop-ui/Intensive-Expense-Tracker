@@ -1,4 +1,5 @@
 import type { Category, CategoryBudget, Expense, UserProfile } from "@/context/AppContext";
+import { type LanguageCode, getCategoryLabelForLang } from "@/constants/translations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -6,14 +7,14 @@ export type RiskLevel = "low" | "medium" | "high";
 
 export interface BudgetSuggestion {
   category: Category;
-  arabicCategoryName: string;
+  categoryName: string;
   currentBudget: number;
   avgMonthlySpent: number;
   recommendedBudget: number;
   changeAmount: number;       // negative = saving, positive = increase needed
   changePct: number;
   riskLevel: RiskLevel;
-  arabicReason: string;
+  reason: string;
   monthsAnalyzed: number;
   isFixed: boolean;
   isSaving: boolean;          // true = we suggest cutting, false = increase needed
@@ -31,20 +32,6 @@ export interface SmartBudgetResult {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const FIXED_CATEGORIES = new Set<Category>(["rent", "bills", "education"]);
-
-const ARABIC_NAMES: Record<Category, string> = {
-  food:          "الطعام",
-  transport:     "المواصلات",
-  shopping:      "التسوق",
-  rent:          "الإيجار",
-  bills:         "الفواتير",
-  health:        "الصحة",
-  entertainment: "الترفيه",
-  education:     "التعليم",
-  travel:        "السفر",
-  family:        "العائلة",
-  other:         "أخرى",
-};
 
 // Safety buffer percentages by usage ratio bracket
 function getBuffer(usageRatio: number, isFixed: boolean): number {
@@ -92,24 +79,63 @@ function computeRisk(monthsAnalyzed: number, cv: number): RiskLevel {
   return "high";
 }
 
-function arabicReason(
+const REASONS: Record<LanguageCode, {
+  fixedOver:    string;
+  fixedNear:    string;
+  fixedStable:  string;
+  noSpend:      string;
+  veryUnder:    string;
+  under70:      string;
+  under85:      string;
+  nearLimit:    string;
+  overSometimes:string;
+  overAlways:   string;
+}> = {
+  en: {
+    fixedOver:     "You've exceeded your fixed budget — we recommend raising it to cover your actual needs",
+    fixedNear:     "Your fixed expenses are stable — we added a small safety buffer",
+    fixedStable:   "These are regular fixed expenses — budget calculated precisely",
+    noSpend:       "No recorded spending in this category — budget can be safely reduced",
+    veryUnder:     "You're spending less than half your budget — it can be significantly reduced with a safety buffer",
+    under70:       "Your spending is below budget — safe to reduce with a 10% buffer",
+    under85:       "Your spending is steady and below budget — minor adjustment with adequate safety buffer",
+    nearLimit:     "Your spending is near the limit — we added a safety buffer to avoid overruns",
+    overSometimes: "You've occasionally exceeded budget — we recommend raising it to match your actual spending",
+    overAlways:    "Spending consistently exceeds budget — increase needed for realistic expense management",
+  },
+  ar: {
+    fixedOver:     "تجاوزت ميزانيتك الثابتة — نوصي برفعها لتغطية احتياجاتك الفعلية",
+    fixedNear:     "نفقاتك الثابتة مستقرة — اقترحنا هامش أمان بسيط",
+    fixedStable:   "هذه نفقات ثابتة ومنتظمة — الميزانية محسوبة بدقة",
+    noSpend:       "لا يوجد إنفاق مسجل في هذه الفئة — يمكن تخفيض الميزانية بأمان",
+    veryUnder:     "إنفاقك أقل من نصف الميزانية — يمكن تخفيضها بشكل كبير مع هامش احتياطي",
+    under70:       "إنفاقك أقل من الميزانية المحددة — اقتراح تخفيض بأمان مع هامش 10٪",
+    under85:       "إنفاقك منتظم وأقل من الميزانية — تعديل طفيف مع هامش أمان كافٍ",
+    nearLimit:     "إنفاقك قريب من الحد الأقصى — أضفنا هامش أمان لتفادي التجاوز",
+    overSometimes: "تجاوزت الميزانية أحياناً — ننصح برفعها لتتوافق مع إنفاقك الفعلي",
+    overAlways:    "إنفاقك يتجاوز الميزانية باستمرار — الرفع ضروري لإدارة مصروفاتك بواقعية",
+  },
+};
+
+function buildReason(
   isFixed: boolean,
   usageRatio: number,
   avgMonthlySpent: number,
-  monthsAnalyzed: number,
+  lang: LanguageCode,
 ): string {
+  const r = REASONS[lang];
   if (isFixed) {
-    if (usageRatio > 1.05) return "تجاوزت ميزانيتك الثابتة — نوصي برفعها لتغطية احتياجاتك الفعلية";
-    if (usageRatio > 0.9)  return "نفقاتك الثابتة مستقرة — اقترحنا هامش أمان بسيط";
-    return "هذه نفقات ثابتة ومنتظمة — الميزانية محسوبة بدقة";
+    if (usageRatio > 1.05) return r.fixedOver;
+    if (usageRatio > 0.9)  return r.fixedNear;
+    return r.fixedStable;
   }
-  if (avgMonthlySpent === 0) return "لا يوجد إنفاق مسجل في هذه الفئة — يمكن تخفيض الميزانية بأمان";
-  if (usageRatio < 0.5)     return "إنفاقك أقل من نصف الميزانية — يمكن تخفيضها بشكل كبير مع هامش احتياطي";
-  if (usageRatio < 0.7)     return "إنفاقك أقل من الميزانية المحددة — اقتراح تخفيض بأمان مع هامش 10٪";
-  if (usageRatio < 0.85)    return "إنفاقك منتظم وأقل من الميزانية — تعديل طفيف مع هامش أمان كافٍ";
-  if (usageRatio < 1.0)     return "إنفاقك قريب من الحد الأقصى — أضفنا هامش أمان لتفادي التجاوز";
-  if (usageRatio < 1.2)     return "تجاوزت الميزانية أحياناً — ننصح برفعها لتتوافق مع إنفاقك الفعلي";
-  return "إنفاقك يتجاوز الميزانية باستمرار — الرفع ضروري لإدارة مصروفاتك بواقعية";
+  if (avgMonthlySpent === 0) return r.noSpend;
+  if (usageRatio < 0.5)     return r.veryUnder;
+  if (usageRatio < 0.7)     return r.under70;
+  if (usageRatio < 0.85)    return r.under85;
+  if (usageRatio < 1.0)     return r.nearLimit;
+  if (usageRatio < 1.2)     return r.overSometimes;
+  return r.overAlways;
 }
 
 // ── Core engine ───────────────────────────────────────────────────────────────
@@ -118,6 +144,7 @@ export function computeSmartBudgetSuggestions(
   expenses: Expense[],
   categoryBudgets: CategoryBudget[],
   userProfile: UserProfile | null,
+  language: LanguageCode = "en",
 ): SmartBudgetResult {
   const MONTHS_TO_ANALYZE = 6;
   const pastMonthKeys = getPastMonthKeys(MONTHS_TO_ANALYZE);
@@ -138,7 +165,7 @@ export function computeSmartBudgetSuggestions(
     catMap.set(exp.category, (catMap.get(exp.category) ?? 0) + exp.amount);
   }
 
-  // Determine which past months had ANY spending (to avoid penalizing sparse early months)
+  // Determine which past months had ANY spending
   const activeMonthKeys = pastMonthKeys.filter((mk) => {
     const catMap = monthCatTotals.get(mk)!;
     return catMap.size > 0;
@@ -155,10 +182,7 @@ export function computeSmartBudgetSuggestions(
 
     const isFixed = FIXED_CATEGORIES.has(category);
 
-    // Collect per-month totals for this category (0 if no spending that month)
     const perMonthAmounts = activeMonthKeys.map((mk) => monthCatTotals.get(mk)?.get(category) ?? 0);
-
-    // Need at least 1 active month
     if (perMonthAmounts.length === 0) continue;
 
     const avgMonthlySpent = perMonthAmounts.reduce((a, b) => a + b, 0) / perMonthAmounts.length;
@@ -171,17 +195,14 @@ export function computeSmartBudgetSuggestions(
     let recommended: number;
 
     if (isFixed) {
-      // Never reduce fixed; only align up if consistently over
       const buffer = getBuffer(usageRatio, true);
       recommended = Math.max(currentBudget, roundTo5(avgMonthlySpent * (1 + buffer)));
     } else if (avgMonthlySpent === 0) {
-      // Never spent here — suggest minimum
       recommended = roundTo5(currentBudget * 0.25);
       recommended = Math.max(recommended, 20);
     } else {
       const buffer = getBuffer(usageRatio, false);
       recommended = roundTo5(avgMonthlySpent * (1 + buffer));
-      // Never reduce below 20% of current (hard floor)
       const floor = Math.max(roundTo5(currentBudget * 0.2), 20);
       recommended = Math.max(recommended, floor);
     }
@@ -189,22 +210,21 @@ export function computeSmartBudgetSuggestions(
     const changeAmount = recommended - currentBudget;
     const changePct = (changeAmount / currentBudget) * 100;
 
-    // Skip if change is negligible (< 4% and < 10 units)
     if (Math.abs(changePct) < 4 && Math.abs(changeAmount) < 10) continue;
 
     const riskLevel = computeRisk(monthsAnalyzed, cv);
-    const reason = arabicReason(isFixed, usageRatio, avgMonthlySpent, monthsAnalyzed);
+    const reason = buildReason(isFixed, usageRatio, avgMonthlySpent, language);
 
     rawSuggestions.push({
       category,
-      arabicCategoryName: ARABIC_NAMES[category] ?? category,
+      categoryName: getCategoryLabelForLang(category, language),
       currentBudget,
       avgMonthlySpent,
       recommendedBudget: recommended,
       changeAmount,
       changePct,
       riskLevel,
-      arabicReason: reason,
+      reason,
       monthsAnalyzed,
       isFixed,
       isSaving: changeAmount < 0,
@@ -231,29 +251,25 @@ export function computeSmartBudgetSuggestions(
         const scale = flexibleBudget / currentFlexTotal;
         for (const sg of flexibleSuggestions) {
           const capped = roundTo5(sg.recommendedBudget * scale);
-          // Never go below average spending + 5%
           const minAllowed = roundTo5(sg.avgMonthlySpent * 1.05);
           sg.recommendedBudget = Math.max(capped, minAllowed, 20);
           sg.changeAmount = sg.recommendedBudget - sg.currentBudget;
           sg.changePct = (sg.changeAmount / sg.currentBudget) * 100;
           sg.isSaving = sg.changeAmount < 0;
-          // Re-check negligibility after capping
         }
       }
     }
   }
 
-  // Re-filter negligible after income cap adjustments
   const suggestions = rawSuggestions.filter(
     (sg) => !(Math.abs(sg.changePct) < 4 && Math.abs(sg.changeAmount) < 10),
   );
 
-  // Sort: savings first (largest saving first), then increases (smallest increase first)
   suggestions.sort((a, b) => {
     if (a.isSaving && !b.isSaving) return -1;
     if (!a.isSaving && b.isSaving) return 1;
-    if (a.isSaving) return a.changeAmount - b.changeAmount; // more negative = bigger saving = first
-    return a.changeAmount - b.changeAmount; // smaller increase first
+    if (a.isSaving) return a.changeAmount - b.changeAmount;
+    return a.changeAmount - b.changeAmount;
   });
 
   const totalCurrentBudget = suggestions.reduce((s, sg) => s + sg.currentBudget, 0);
