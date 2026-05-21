@@ -16,6 +16,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+import { PINSetupModal } from "@/components/PINSetupModal";
+import { SecurityQuestionModal } from "@/components/SecurityQuestionModal";
 import { useLanguage } from "@/context/LanguageContext";
 import { useSecurity } from "@/context/SecurityContext";
 
@@ -75,7 +77,7 @@ function Key({
 // ── Lock screen ───────────────────────────────────────────────────────────────
 
 export function LockScreen() {
-  const { verifyPin, unlock, authenticateWithBiometric, isBiometricEnabled, isBiometricAvailable } = useSecurity();
+  const { verifyPin, unlock, authenticateWithBiometric, isBiometricEnabled, isBiometricAvailable, hasSecurityQuestion } = useSecurity();
   const { t, language } = useLanguage();
 
   const [entered, setEntered]         = useState("");
@@ -84,6 +86,8 @@ export function LockScreen() {
   const [locked, setLocked]           = useState(false);
   const [countdown, setCountdown]     = useState(0);
   const countdownRef                  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [showForgotPIN, setShowForgotPIN]   = useState(false);
+  const [showPINReset, setShowPINReset]     = useState(false);
 
   const { style: shakeStyle, shake } = useShake();
 
@@ -194,6 +198,13 @@ export function LockScreen() {
         }
       </Text>
 
+      {/* Forgot PIN */}
+      {hasSecurityQuestion && !locked && (
+        <TouchableOpacity onPress={() => setShowForgotPIN(true)} activeOpacity={0.6} style={styles.forgotBtn}>
+          <Text style={styles.forgotText}>{t("forgotPIN")}</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Keypad */}
       <View style={styles.keypad}>
         {/* Row 1 */}
@@ -240,6 +251,21 @@ export function LockScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Forgot PIN - Security Question recovery */}
+      <SecurityQuestionModal
+        mode="verify"
+        visible={showForgotPIN}
+        onClose={() => setShowForgotPIN(false)}
+        onVerified={() => { setShowForgotPIN(false); setShowPINReset(true); }}
+      />
+
+      {/* PIN Reset after security question answered */}
+      <PINSetupModal
+        visible={showPINReset}
+        onClose={() => setShowPINReset(false)}
+        onSuccess={() => { setShowPINReset(false); unlock(); }}
+      />
     </View>
   );
 }
@@ -291,4 +317,6 @@ const styles = StyleSheet.create({
   keyDisabled: { opacity: 0.35 },
   keyLabel: { color: "#fff", fontSize: 26, fontWeight: "300" },
   keySub: { color: "rgba(255,255,255,0.5)", fontSize: 9, fontWeight: "700", letterSpacing: 1.5, marginTop: 1 },
+  forgotBtn: { marginBottom: 20 },
+  forgotText: { color: "rgba(255,255,255,0.4)", fontSize: 13, textDecorationLine: "underline" },
 });

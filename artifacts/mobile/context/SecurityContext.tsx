@@ -13,8 +13,9 @@ import { AppState, type AppStateStatus, Platform } from "react-native";
 
 // ── Secure storage helpers (SecureStore not available on web) ─────────────────
 
-const PIN_KEY      = "intensive_pin_v1";
-const BIOMETRIC_KEY = "intensive_biometric_v1";
+const PIN_KEY        = "intensive_pin_v1";
+const BIOMETRIC_KEY  = "intensive_biometric_v1";
+const SECURITY_Q_KEY = "intensive_security_q_v1";
 
 function secureGet(key: string) {
   return Platform.OS === "web"
@@ -40,13 +41,23 @@ export interface SecurityContextType {
   isBiometricAvailable: boolean;
   isLocked: boolean;
   isReady: boolean;
+  // Security question
+  hasSecurityQuestion: boolean;
+  securityQuestionIndex: number | null;
+  // PIN methods
   setupPin: (pin: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<boolean>;
   disablePin: () => Promise<void>;
+  // Biometric methods
   toggleBiometric: (enabled: boolean) => Promise<void>;
   authenticateWithBiometric: () => Promise<boolean>;
+  // Lock/unlock
   unlock: () => void;
   lock: () => void;
+  // Security question methods
+  setupSecurityQuestion: (index: number, answer: string) => Promise<void>;
+  verifySecurityAnswer: (answer: string) => Promise<boolean>;
+  clearSecurityQuestion: () => Promise<void>;
 }
 
 const SecurityContext = createContext<SecurityContextType | null>(null);
@@ -54,11 +65,12 @@ const SecurityContext = createContext<SecurityContextType | null>(null);
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function SecurityProvider({ children }: { children: React.ReactNode }) {
-  const [isPinEnabled, setIsPinEnabled]             = useState(false);
-  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  const [isPinEnabled, setIsPinEnabled]                 = useState(false);
+  const [isBiometricEnabled, setIsBiometricEnabled]     = useState(false);
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
-  const [isLocked, setIsLocked]                     = useState(false);
-  const [isReady, setIsReady]                       = useState(false);
+  const [isLocked, setIsLocked]                         = useState(false);
+  const [isReady, setIsReady]                           = useState(false);
+  const [securityQuestionIndex, setSecurityQuestionIndex] = useState<number | null>(null);
 
   const appStateRef  = useRef<AppStateStatus>(AppState.currentState);
   const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -69,26 +81,28 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     async function load() {
       try {
-        const [pin, biometric, bioAvail, bioEnrolled] = await Promise.all([
+        const [pin, biometric, bioAvail, bioEnrolled, secQ] = await Promise.all([
           secureGet(PIN_KEY),
           secureGet(BIOMETRIC_KEY),
           LocalAuthentication.hasHardwareAsync(),
           LocalAuthentication.isEnrolledAsync(),
+          secureGet(SECURITY_Q_KEY),
         ]);
 
         if (!mounted) return;
 
-        const pinEnabled = pin !== null;
-        const bioEnabled = biometric === "true";
-        const bioAvailable = bioAvail && bioEnrolled;
+        const pinEnabled    = pin !== null;
+        const bioEnabled    = biometric === "true";
+        const bioAvailable  = bioAvail && bioEnrolled;
+        const secQData      = secQ ? (JSON.parse(secQ) as { index: number; answer: string }) : null;
 
         setIsPinEnabled(pinEnabled);
         setIsBiometricEnabled(bioEnabled);
         setIsBiometricAvailable(bioAvailable);
+        setSecurityQuestionIndex(secQData?.index ?? null);
 
         if (pinEnabled) {
           setIsLocked(true);
-          // Auto-prompt biometric after splash clears
           if (bioEnabled && bioAvailable) {
             setTimeout(() => doTryBiometric(), 600);
           }
@@ -130,7 +144,6 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
         doTryBiometric();
       }
     });
-
     return () => {
       sub.remove();
       if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
@@ -142,17 +155,15 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   async function doTryBiometric() {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage:          "Authenticate to open Intensive",
-        cancelLabel:            "Use PIN",
-        disableDeviceFallback:  true,
+        promptMessage:         "Authenticate to open Intensive",
+        cancelLabel:           "Use PIN",
+        disableDeviceFallback: true,
       });
       if (result.success) setIsLocked(false);
-    } catch {
-      // ignored — user falls back to PIN
-    }
+    } catch { /* user falls back to PIN */ }
   }
 
-  // ── Actions ──────────────────────────────────────────────────────────────
+  // ── PIN methods ───────────────────────────────────────────────────────────
 
   const setupPin = useCallback(async (pin: string) => {
     await secureSet(PIN_KEY, pin);
@@ -173,12 +184,11 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     setIsLocked(false);
   }, []);
 
+  // ── Biometric methods ─────────────────────────────────────────────────────
+
   const toggleBiometric = useCallback(async (enabled: boolean) => {
-    if (enabled) {
-      await secureSet(BIOMETRIC_KEY, "true");
-    } else {
-      await secureDelete(BIOMETRIC_KEY);
-    }
+    if (enabled) await secureSet(BIOMETRIC_KEY, "true");
+    else await secureDelete(BIOMETRIC_KEY);
     setIsBiometricEnabled(enabled);
   }, []);
 
@@ -191,20 +201,44 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       });
       if (result.success) { setIsLocked(false); return true; }
       return false;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }, []);
+
+  // ── Lock/unlock ───────────────────────────────────────────────────────────
 
   const unlock = useCallback(() => setIsLocked(false), []);
   const lock   = useCallback(() => { if (isPinEnabledRef.current) setIsLocked(true); }, []);
+
+  // ── Security question methods ─────────────────────────────────────────────
+
+  const setupSecurityQuestion = useCallback(async (index: number, answer: string) => {
+    const payload = JSON.stringify({ index, answer: answer.toLowerCase().trim() });
+    await secureSet(SECURITY_Q_KEY, payload);
+    setSecurityQuestionIndex(index);
+  }, []);
+
+  const verifySecurityAnswer = useCallback(async (answer: string): Promise<boolean> => {
+    const raw = await secureGet(SECURITY_Q_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw) as { index: number; answer: string };
+    return data.answer === answer.toLowerCase().trim();
+  }, []);
+
+  const clearSecurityQuestion = useCallback(async () => {
+    await secureDelete(SECURITY_Q_KEY);
+    setSecurityQuestionIndex(null);
+  }, []);
 
   return (
     <SecurityContext.Provider value={{
       isPinEnabled, isBiometricEnabled, isBiometricAvailable,
       isLocked, isReady,
-      setupPin, verifyPin, disablePin, toggleBiometric,
-      authenticateWithBiometric, unlock, lock,
+      hasSecurityQuestion: securityQuestionIndex !== null,
+      securityQuestionIndex,
+      setupPin, verifyPin, disablePin,
+      toggleBiometric, authenticateWithBiometric,
+      unlock, lock,
+      setupSecurityQuestion, verifySecurityAnswer, clearSecurityQuestion,
     }}>
       {children}
     </SecurityContext.Provider>

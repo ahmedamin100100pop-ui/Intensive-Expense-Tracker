@@ -17,12 +17,23 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
 import { PINSetupModal } from "@/components/PINSetupModal";
+import { SecurityQuestionModal } from "@/components/SecurityQuestionModal";
 import { COUNTRIES, LANGUAGES, getCountryByCode } from "@/constants/translations";
 import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useSecurity } from "@/context/SecurityContext";
 import { useColors } from "@/hooks/useColors";
 import { exportBackup, importBackup } from "@/utils/dataBackup";
+import {
+  DEFAULT_NOTIF_PREFS,
+  REMINDER_TIMES,
+  cancelDailyReminder,
+  getNotifPrefs,
+  requestNotificationPermission,
+  saveNotifPrefs,
+  scheduleDailyReminder,
+  type NotifPrefs,
+} from "@/utils/notifications";
 
 type Status = "idle" | "exporting" | "importing";
 
@@ -38,7 +49,7 @@ export default function SettingsScreen() {
   const [status, setStatus] = useState<Status>("idle");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
-  const { isPinEnabled, isBiometricEnabled, isBiometricAvailable, disablePin, toggleBiometric } = useSecurity();
+  const { isPinEnabled, isBiometricEnabled, isBiometricAvailable, hasSecurityQuestion, disablePin, toggleBiometric } = useSecurity();
   const [editName, setEditName] = useState(userProfile?.name ?? "");
   const [editIncome, setEditIncome] = useState(String(userProfile?.monthlyIncome ?? ""));
   const [editBudget, setEditBudget] = useState(String(userProfile?.monthlyBudget ?? ""));
@@ -46,6 +57,10 @@ export default function SettingsScreen() {
   const [profileDirty, setProfileDirty] = useState(false);
   const [showPINSetup, setShowPINSetup] = useState(false);
   const [isChangingPIN, setIsChangingPIN] = useState(false);
+  const [showSecurityQ, setShowSecurityQ] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
+
+  React.useEffect(() => { getNotifPrefs().then(setNotifPrefs); }, []);
 
   const markDirty = () => setProfileDirty(true);
   const selectedCountry = getCountryByCode(editCountry);
@@ -119,6 +134,39 @@ export default function SettingsScreen() {
     await toggleBiometric(value);
   };
 
+  const updateNotifPrefs = async (patch: Partial<NotifPrefs>) => {
+    const next = { ...notifPrefs, ...patch };
+    setNotifPrefs(next);
+    await saveNotifPrefs(next);
+  };
+
+  const handleBudgetAlertsToggle = async (value: boolean) => {
+    Haptics.selectionAsync();
+    if (value) {
+      const granted = await requestNotificationPermission();
+      if (!granted) { Alert.alert("", t("notifPermissionDenied")); return; }
+    }
+    await updateNotifPrefs({ budgetAlerts: value });
+  };
+
+  const handleDailyReminderToggle = async (value: boolean) => {
+    Haptics.selectionAsync();
+    if (value) {
+      const granted = await requestNotificationPermission();
+      if (!granted) { Alert.alert("", t("notifPermissionDenied")); return; }
+      await scheduleDailyReminder(t("dailyReminderTitle"), t("dailyReminderBody"), notifPrefs.reminderHour, notifPrefs.reminderMinute);
+    } else {
+      await cancelDailyReminder();
+    }
+    await updateNotifPrefs({ dailyReminder: value });
+  };
+
+  const handleReminderTime = async (hour: number, minute: number) => {
+    Haptics.selectionAsync();
+    await scheduleDailyReminder(t("dailyReminderTitle"), t("dailyReminderBody"), hour, minute);
+    await updateNotifPrefs({ reminderHour: hour, reminderMinute: minute });
+  };
+
   const expenseCount = expenses.filter((e) => !e.isIncome).length;
   const incomeCount = expenses.filter((e) => e.isIncome).length;
   const backupSize = (() => { const bytes = new TextEncoder().encode(JSON.stringify({ expenses, userProfile, categoryBudgets })).length; return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`; })();
@@ -161,11 +209,60 @@ export default function SettingsScreen() {
       )}
       {/* Change PIN row — only when PIN is on */}
       {isPinEnabled && (
-        <TouchableOpacity style={[styles.row, { borderBottomWidth: 0 }]} onPress={handleChangePIN} activeOpacity={0.6}>
+        <TouchableOpacity style={[styles.row, { borderBottomWidth: 1, borderBottomColor: col.border }]} onPress={handleChangePIN} activeOpacity={0.6}>
           <View style={[styles.rowIcon, { backgroundColor: col.primary + "18" }]}><Feather name="refresh-cw" size={17} color={col.primary} /></View>
           <View style={styles.rowContent}><Text style={[styles.rowLabel, { color: col.foreground }]}>{t("changePIN")}</Text></View>
           <Feather name="chevron-right" size={16} color={col.mutedForeground} />
         </TouchableOpacity>
+      )}
+      {/* Security Question row — only when PIN is on */}
+      {isPinEnabled && (
+        <TouchableOpacity style={[styles.row, { borderBottomWidth: 0 }]} onPress={() => setShowSecurityQ(true)} activeOpacity={0.6}>
+          <View style={[styles.rowIcon, { backgroundColor: col.primary + "18" }]}><Feather name="help-circle" size={17} color={col.primary} /></View>
+          <View style={styles.rowContent}>
+            <Text style={[styles.rowLabel, { color: col.foreground }]}>{t("securityQuestion")}</Text>
+            <Text style={[styles.rowSublabel, { color: col.mutedForeground }]}>{t("securityQuestionSub")}</Text>
+          </View>
+          <Feather name={hasSecurityQuestion ? "check-circle" : "chevron-right"} size={16} color={hasSecurityQuestion ? "#10B981" : col.mutedForeground} />
+        </TouchableOpacity>
+      )}
+    </View>
+
+    {/* ── Notifications section ──────────────────────────────────────────── */}
+    <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("notifications")}</Text>
+    <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, padding: 0 }]}>
+      {/* Budget Alerts */}
+      <View style={[styles.switchRow, { borderBottomWidth: notifPrefs.dailyReminder ? 1 : 0, borderBottomColor: col.border }]}>
+        <View style={[styles.rowIcon, { backgroundColor: "#F59E0B18" }]}><Feather name="bell" size={17} color="#F59E0B" /></View>
+        <View style={styles.rowContent}><Text style={[styles.rowLabel, { color: col.foreground }]}>{t("budgetAlerts")}</Text><Text style={[styles.rowSublabel, { color: col.mutedForeground }]}>{t("budgetAlertsSub")}</Text></View>
+        <Switch value={notifPrefs.budgetAlerts} onValueChange={handleBudgetAlertsToggle} trackColor={{ false: col.border, true: col.primary }} thumbColor="#fff" />
+      </View>
+      {/* Daily Reminder */}
+      <View style={[styles.switchRow, { borderBottomWidth: notifPrefs.dailyReminder ? 1 : 0, borderBottomColor: col.border }]}>
+        <View style={[styles.rowIcon, { backgroundColor: "#10B98118" }]}><Feather name="clock" size={17} color="#10B981" /></View>
+        <View style={styles.rowContent}><Text style={[styles.rowLabel, { color: col.foreground }]}>{t("dailyReminder")}</Text><Text style={[styles.rowSublabel, { color: col.mutedForeground }]}>{t("dailyReminderSub")}</Text></View>
+        <Switch value={notifPrefs.dailyReminder} onValueChange={handleDailyReminderToggle} trackColor={{ false: col.border, true: col.primary }} thumbColor="#fff" />
+      </View>
+      {/* Reminder time chips — only when daily reminder is on */}
+      {notifPrefs.dailyReminder && (
+        <View style={{ padding: 14, paddingTop: 8 }}>
+          <Text style={[styles.rowSublabel, { color: col.mutedForeground, marginBottom: 10 }]}>{t("reminderTime")}</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {REMINDER_TIMES.map((rt) => {
+              const active = rt.hour === notifPrefs.reminderHour && rt.minute === notifPrefs.reminderMinute;
+              return (
+                <TouchableOpacity
+                  key={rt.label}
+                  style={[styles.timeChip, { borderColor: active ? col.primary : col.border, backgroundColor: active ? col.secondary : "transparent" }]}
+                  onPress={() => handleReminderTime(rt.hour, rt.minute)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.timeChipText, { color: active ? col.primary : col.mutedForeground }]}>{rt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
       )}
     </View>
 
@@ -177,6 +274,16 @@ export default function SettingsScreen() {
         setShowPINSetup(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert("", t("pinSetSuccess"), [{ text: t("ok") }]);
+      }}
+    />
+    <SecurityQuestionModal
+      mode="setup"
+      visible={showSecurityQ}
+      onClose={() => setShowSecurityQ(false)}
+      onSuccess={() => {
+        setShowSecurityQ(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("", t("securityQuestion"), [{ text: t("ok") }]);
       }}
     />
 
@@ -225,4 +332,6 @@ const styles = StyleSheet.create({
   countryChipSymbol: { fontSize: 12, fontWeight: "800" },
   countryChipText: { fontSize: 12, marginTop: 4, fontWeight: "600" },
   switchRow: { flexDirection: "row", alignItems: "center", padding: 14 },
+  timeChip: { borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  timeChipText: { fontSize: 12, fontWeight: "600" },
 });

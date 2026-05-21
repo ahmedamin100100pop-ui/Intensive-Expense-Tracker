@@ -18,7 +18,8 @@
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.intensive.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserNotificationUsageDescription": "Intensive sends budget alerts and daily spending reminders."
       }
     },
     "android": {
@@ -26,7 +27,12 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
       },
-      "package": "com.intensive.app"
+      "package": "com.intensive.app",
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "SCHEDULE_EXACT_ALARM"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -39,7 +45,15 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#4F46E5",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

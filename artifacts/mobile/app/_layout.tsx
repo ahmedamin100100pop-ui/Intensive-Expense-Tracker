@@ -21,6 +21,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LockScreen } from "@/components/LockScreen";
+import { NotificationManager } from "@/components/NotificationManager";
 import { AppProvider } from "@/context/AppContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { SecurityProvider, useSecurity } from "@/context/SecurityContext";
@@ -80,6 +81,7 @@ export default function RootLayout() {
                   <KeyboardProvider>
                     <SecurityGate>
                       <RootLayoutNav />
+                      <NotificationManager />
                     </SecurityGate>
                   </KeyboardProvider>
                 </GestureHandlerRootView>
