@@ -14,13 +14,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { LockScreen } from "@/components/LockScreen";
 import { AppProvider } from "@/context/AppContext";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { SecurityProvider, useSecurity } from "@/context/SecurityContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -29,10 +32,21 @@ const queryClient = new QueryClient();
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)"    options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, animation: "slide_from_bottom" }} />
-      <Stack.Screen name="report" options={{ headerShown: false }} />
+      <Stack.Screen name="report"    options={{ headerShown: false }} />
     </Stack>
+  );
+}
+
+// Renders the lock screen on top of everything when the app is locked
+function SecurityGate({ children }: { children: React.ReactNode }) {
+  const { isLocked } = useSecurity();
+  return (
+    <View style={{ flex: 1 }}>
+      {children}
+      {isLocked && <LockScreen />}
+    </View>
   );
 }
 
@@ -61,11 +75,15 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <LanguageProvider>
             <AppProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <KeyboardProvider>
-                  <RootLayoutNav />
-                </KeyboardProvider>
-              </GestureHandlerRootView>
+              <SecurityProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <SecurityGate>
+                      <RootLayoutNav />
+                    </SecurityGate>
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </SecurityProvider>
             </AppProvider>
           </LanguageProvider>
         </QueryClientProvider>

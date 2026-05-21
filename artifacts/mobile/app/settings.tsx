@@ -7,6 +7,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,9 +16,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import colors from "@/constants/colors";
+import { PINSetupModal } from "@/components/PINSetupModal";
 import { COUNTRIES, LANGUAGES, getCountryByCode } from "@/constants/translations";
 import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { useSecurity } from "@/context/SecurityContext";
 import { useColors } from "@/hooks/useColors";
 import { exportBackup, importBackup } from "@/utils/dataBackup";
 
@@ -35,11 +38,14 @@ export default function SettingsScreen() {
   const [status, setStatus] = useState<Status>("idle");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
+  const { isPinEnabled, isBiometricEnabled, isBiometricAvailable, disablePin, toggleBiometric } = useSecurity();
   const [editName, setEditName] = useState(userProfile?.name ?? "");
   const [editIncome, setEditIncome] = useState(String(userProfile?.monthlyIncome ?? ""));
   const [editBudget, setEditBudget] = useState(String(userProfile?.monthlyBudget ?? ""));
   const [editCountry, setEditCountry] = useState(userProfile?.countryCode ?? "us");
   const [profileDirty, setProfileDirty] = useState(false);
+  const [showPINSetup, setShowPINSetup] = useState(false);
+  const [isChangingPIN, setIsChangingPIN] = useState(false);
 
   const markDirty = () => setProfileDirty(true);
   const selectedCountry = getCountryByCode(editCountry);
@@ -91,6 +97,28 @@ export default function SettingsScreen() {
     Alert.alert(t("clearAllDataConfirmTitle"), t("clearAllDataConfirmMsg"), [{ text: t("cancel"), style: "cancel" }, { text: t("deleteEverything"), style: "destructive", onPress: () => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); clearAllData(); router.replace("/onboarding"); } }]);
   };
 
+  const handlePINToggle = (value: boolean) => {
+    if (value) {
+      setIsChangingPIN(false);
+      setShowPINSetup(true);
+    } else {
+      Alert.alert(t("pinDisableConfirm"), t("pinDisableMsg"), [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("disable"), style: "destructive", onPress: () => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); disablePin(); } },
+      ]);
+    }
+  };
+
+  const handleChangePIN = () => {
+    setIsChangingPIN(true);
+    setShowPINSetup(true);
+  };
+
+  const handleBiometricToggle = async (value: boolean) => {
+    Haptics.selectionAsync();
+    await toggleBiometric(value);
+  };
+
   const expenseCount = expenses.filter((e) => !e.isIncome).length;
   const incomeCount = expenses.filter((e) => e.isIncome).length;
   const backupSize = (() => { const bytes = new TextEncoder().encode(JSON.stringify({ expenses, userProfile, categoryBudgets })).length; return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`; })();
@@ -114,6 +142,43 @@ export default function SettingsScreen() {
 
     <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("yourData")}</Text>
     <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border }]}><Row icon="upload" label={t("exportBackup")} sublabel={t("exportBackupSub")} onPress={handleExport} tint={col.primary} col={col} /><Row icon="download" label={t("importBackup")} sublabel={t("importBackupSub")} onPress={handleImport} tint={col.primary} col={col} /></View>
+
+    <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("privacy")}</Text>
+    <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, padding: 0 }]}>
+      {/* PIN Lock row */}
+      <View style={[styles.switchRow, { borderBottomWidth: isPinEnabled ? 1 : 0, borderBottomColor: col.border }]}>
+        <View style={[styles.rowIcon, { backgroundColor: col.primary + "18" }]}><Feather name="lock" size={17} color={col.primary} /></View>
+        <View style={styles.rowContent}><Text style={[styles.rowLabel, { color: col.foreground }]}>{t("pinLock")}</Text><Text style={[styles.rowSublabel, { color: col.mutedForeground }]}>{t("pinLockSub")}</Text></View>
+        <Switch value={isPinEnabled} onValueChange={handlePINToggle} trackColor={{ false: col.border, true: col.primary }} thumbColor="#fff" />
+      </View>
+      {/* Biometric row — only when PIN is on and hardware is available */}
+      {isPinEnabled && isBiometricAvailable && (
+        <View style={[styles.switchRow, { borderBottomWidth: isPinEnabled ? 1 : 0, borderBottomColor: col.border }]}>
+          <View style={[styles.rowIcon, { backgroundColor: col.primary + "18" }]}><Feather name="aperture" size={17} color={col.primary} /></View>
+          <View style={styles.rowContent}><Text style={[styles.rowLabel, { color: col.foreground }]}>{t("biometricAuth")}</Text><Text style={[styles.rowSublabel, { color: col.mutedForeground }]}>{t("biometricAuthSub")}</Text></View>
+          <Switch value={isBiometricEnabled} onValueChange={handleBiometricToggle} trackColor={{ false: col.border, true: col.primary }} thumbColor="#fff" />
+        </View>
+      )}
+      {/* Change PIN row — only when PIN is on */}
+      {isPinEnabled && (
+        <TouchableOpacity style={[styles.row, { borderBottomWidth: 0 }]} onPress={handleChangePIN} activeOpacity={0.6}>
+          <View style={[styles.rowIcon, { backgroundColor: col.primary + "18" }]}><Feather name="refresh-cw" size={17} color={col.primary} /></View>
+          <View style={styles.rowContent}><Text style={[styles.rowLabel, { color: col.foreground }]}>{t("changePIN")}</Text></View>
+          <Feather name="chevron-right" size={16} color={col.mutedForeground} />
+        </TouchableOpacity>
+      )}
+    </View>
+
+    <PINSetupModal
+      visible={showPINSetup}
+      isChanging={isChangingPIN}
+      onClose={() => setShowPINSetup(false)}
+      onSuccess={() => {
+        setShowPINSetup(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("", t("pinSetSuccess"), [{ text: t("ok") }]);
+      }}
+    />
 
     <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("dangerZone")}</Text>
     <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border }]}><Row icon="trash-2" label={t("clearAllData")} sublabel={t("clearAllDataSub")} onPress={handleClearData} tint="#EF4444" col={col} /></View>
@@ -159,4 +224,5 @@ const styles = StyleSheet.create({
   countryChip: { width: "48%", borderWidth: 1, borderRadius: 14, padding: 10 },
   countryChipSymbol: { fontSize: 12, fontWeight: "800" },
   countryChipText: { fontSize: 12, marginTop: 4, fontWeight: "600" },
+  switchRow: { flexDirection: "row", alignItems: "center", padding: 14 },
 });
