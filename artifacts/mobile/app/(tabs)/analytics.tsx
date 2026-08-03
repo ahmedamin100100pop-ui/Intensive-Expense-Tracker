@@ -29,6 +29,7 @@ const { width: SCREEN_W } = Dimensions.get("window");
 const CHART_W = SCREEN_W - 64;
 
 type PeriodType = "day" | "month" | "year";
+type TxView = "expense" | "income";
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 
@@ -59,6 +60,7 @@ export default function AnalyticsScreen() {
   const { expenses, userProfile } = useApp();
   const { t, language } = useLanguage();
   const [periodType, setPeriodType] = useState<PeriodType>("month");
+  const [txView, setTxView] = useState<TxView>("expense");
   const [exporting, setExporting] = useState(false);
 
   const today = new Date();
@@ -70,13 +72,17 @@ export default function AnalyticsScreen() {
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   const filtered = useMemo(() => {
-    if (periodType === "day") return expenses.filter((e) => e.date === selectedDate);
-    if (periodType === "month") {
+    const isIncomeBool = txView === "income";
+    let base: typeof expenses;
+    if (periodType === "day") base = expenses.filter((e) => e.date === selectedDate);
+    else if (periodType === "month") {
       const key = `${selectedYear}-${pad(selectedMonth + 1)}`;
-      return expenses.filter((e) => e.date.startsWith(key));
+      base = expenses.filter((e) => e.date.startsWith(key));
+    } else {
+      base = expenses.filter((e) => e.date.startsWith(String(selectedYear)));
     }
-    return expenses.filter((e) => e.date.startsWith(String(selectedYear)));
-  }, [expenses, periodType, selectedDate, selectedMonth, selectedYear]);
+    return base.filter((e) => !!e.isIncome === isIncomeBool);
+  }, [expenses, periodType, selectedDate, selectedMonth, selectedYear, txView]);
 
   const totalSpent = useMemo(() => filtered.reduce((s, e) => s + e.amount, 0), [filtered]);
 
@@ -179,10 +185,9 @@ export default function AnalyticsScreen() {
     year: t("year"),
   };
 
-  const heroLabel =
-    periodType === "day" ? t("spentOnThisDay")
-    : periodType === "month" ? t("spentThisMonth")
-    : t("spentThisYear");
+  const heroLabel = txView === "income"
+    ? (periodType === "day" ? t("earnedOnThisDay") : periodType === "month" ? t("earnedThisMonth") : t("earnedThisYear"))
+    : (periodType === "day" ? t("spentOnThisDay") : periodType === "month" ? t("spentThisMonth") : t("spentThisYear"));
 
   return (
     <View style={[styles.root, { backgroundColor: col.background }]}> 
@@ -206,6 +211,26 @@ export default function AnalyticsScreen() {
               </>
             )}
           </TouchableOpacity>
+        </View>
+
+        {/* Expense / Income toggle */}
+        <View style={[styles.txToggle, { backgroundColor: col.card, borderColor: col.border }]}>
+          {(["expense", "income"] as TxView[]).map((tv) => {
+            const active = txView === tv;
+            const activeColor = tv === "income" ? "#10B981" : col.primary;
+            return (
+              <TouchableOpacity
+                key={tv}
+                style={[styles.txBtn, active && { backgroundColor: activeColor, shadowColor: activeColor, shadowOpacity: 0.3, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 3 }]}
+                onPress={() => { setTxView(tv); Haptics.selectionAsync(); }}
+              >
+                <Feather name={tv === "income" ? "arrow-down-circle" : "arrow-up-circle"} size={14} color={active ? "#fff" : col.mutedForeground} />
+                <Text style={[styles.txBtnText, { color: active ? "#fff" : col.mutedForeground }]}>
+                  {tv === "income" ? t("income") : t("expense")}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <View style={[styles.periodTypeRow, { backgroundColor: col.card, borderColor: col.border }]}> 
@@ -244,7 +269,7 @@ export default function AnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={[styles.heroCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}> 
+        <View style={[styles.heroCard, { backgroundColor: txView === "income" ? "#10B981" : col.primary, borderRadius: colors.radius + 4 }]}> 
           <Text style={styles.heroLabel}>{heroLabel}</Text>
           <Text style={styles.heroAmount}>{totalFormatted}</Text>
           <Text style={styles.heroSub}>
@@ -260,7 +285,7 @@ export default function AnalyticsScreen() {
         ) : (
           <>
             <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius }]}> 
-              <Text style={[styles.cardTitle, { color: col.foreground }]}>{t("spendingByCategory")}</Text>
+              <Text style={[styles.cardTitle, { color: col.foreground }]}>{txView === "income" ? t("incomeByType") : t("spendingByCategory")}</Text>
               <View style={styles.donutRow}>
                 <DonutChart data={donutData} size={170} innerRadius={48} centerLabel={totalFormatted} centerSubLabel={t("total")} />
                 <View style={styles.legend}>
@@ -346,4 +371,7 @@ const styles = StyleSheet.create({
   breakdownRight: { alignItems: "flex-end" },
   breakdownAmount: { fontSize: 14, fontWeight: "600" },
   breakdownPct: { fontSize: 12, marginTop: 1 },
+  txToggle: { flexDirection: "row", borderRadius: 14, borderWidth: 1, padding: 4, gap: 4, marginBottom: 10 },
+  txBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 9, borderRadius: 10 },
+  txBtnText: { fontSize: 14, fontWeight: "700" },
 });
