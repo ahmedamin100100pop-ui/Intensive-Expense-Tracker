@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -218,6 +219,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [categoryBudgets, setCategoryBudgets] = useState<CategoryBudget[]>(DEFAULT_BUDGETS);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Refs always hold the latest state values so callbacks never use stale closures.
+  const expensesRef = useRef<Expense[]>([]);
+  const userProfileRef = useRef<UserProfile | null>(null);
+  const categoryBudgetsRef = useRef<CategoryBudget[]>(DEFAULT_BUDGETS);
+
+  useEffect(() => { expensesRef.current = expenses; }, [expenses]);
+  useEffect(() => { userProfileRef.current = userProfile; }, [userProfile]);
+  useEffect(() => { categoryBudgetsRef.current = categoryBudgets; }, [categoryBudgets]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -228,12 +238,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setUserProfileState(data.userProfile ?? null);
           setCategoryBudgets(data.categoryBudgets ?? DEFAULT_BUDGETS);
         } else {
+          // First launch — seed with sample data, leave profile null so onboarding shows.
           setExpenses(SAMPLE_EXPENSES);
           setUserProfileState(null);
         }
-      } catch {
-        setExpenses(SAMPLE_EXPENSES);
-        setUserProfileState(null);
+      } catch (err) {
+        // Storage read failed (e.g. parse error, quota error).
+        // Do NOT reset state here — keep expenses/profile as-is (both still null/[]).
+        // The original data remains untouched in AsyncStorage; a fresh restart will recover it.
+        // We intentionally do NOT redirect to onboarding or persist anything,
+        // because doing so would overwrite the user's real data with empty/sample data.
+        console.warn("[AppContext] Failed to load data from storage:", err);
       } finally {
         setIsLoading(false);
       }
@@ -245,29 +260,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addExpense = useCallback((e: Omit<Expense, "id" | "createdAt">) => {
-    const next = [{ ...e, id: String(Date.now()), createdAt: new Date().toISOString() }, ...expenses];
-    setExpenses(next);
-    void persist(next, userProfile, categoryBudgets);
-  }, [expenses, userProfile, categoryBudgets, persist]);
+    // Use functional updater so we always work with the latest expenses list,
+    // regardless of when this callback was created (no stale-closure risk).
+    setExpenses((prev) => {
+      const next = [{ ...e, id: String(Date.now()), createdAt: new Date().toISOString() }, ...prev];
+      void persist(next, userProfileRef.current, categoryBudgetsRef.current);
+      return next;
+    });
+  }, [persist]);
 
   const deleteExpense = useCallback((id: string) => {
-    const next = expenses.filter((e) => e.id !== id);
-    setExpenses(next);
-    void persist(next, userProfile, categoryBudgets);
-  }, [expenses, userProfile, categoryBudgets, persist]);
+    setExpenses((prev) => {
+      const next = prev.filter((ex) => ex.id !== id);
+      void persist(next, userProfileRef.current, categoryBudgetsRef.current);
+      return next;
+    });
+  }, [persist]);
 
   const setUserProfile = useCallback((p: UserProfile) => {
     setUserProfileState(p);
-    void persist(expenses, p, categoryBudgets);
-  }, [expenses, categoryBudgets, persist]);
+    // Use the ref so we always persist the latest expenses, not a stale closure snapshot.
+    void persist(expensesRef.current, p, categoryBudgetsRef.current);
+  }, [persist]);
 
   const setCategoryBudget = useCallback((category: Category, amount: number) => {
-    const next = categoryBudgets.some((b) => b.category === category)
-      ? categoryBudgets.map((b) => (b.category === category ? { ...b, budgetAmount: amount } : b))
-      : [...categoryBudgets, { category, budgetAmount: amount }];
-    setCategoryBudgets(next);
-    void persist(expenses, userProfile, next);
-  }, [categoryBudgets, expenses, userProfile, persist]);
+    setCategoryBudgets((prev) => {
+      const next = prev.some((b) => b.category === category)
+        ? prev.map((b) => (b.category === category ? { ...b, budgetAmount: amount } : b))
+        : [...prev, { category, budgetAmount: amount }];
+      void persist(expensesRef.current, userProfileRef.current, next);
+      return next;
+    });
+  }, [persist]);
 
   const restoreBackup = useCallback((data: { expenses: Expense[]; userProfile: UserProfile | null; categoryBudgets: CategoryBudget[]; countryCode?: string }) => {
     const restoredProfile = data.userProfile
