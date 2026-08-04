@@ -47,3 +47,9 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Replit agent internals (not user code)
+.agents/
+
+# Development reference assets uploaded during agent sessions
+attached_assets/
