@@ -23,6 +23,13 @@ import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useSecurity } from "@/context/SecurityContext";
 import { useColors } from "@/hooks/useColors";
+import {
+  DEFAULT_AUTO_EXPORT_PREFS,
+  getAutoExportPrefs,
+  saveAutoExportPrefs,
+  type AutoExportInterval,
+  type AutoExportPrefs,
+} from "@/utils/autoExport";
 import { exportBackup, importBackup } from "@/utils/dataBackup";
 import {
   DEFAULT_NOTIF_PREFS,
@@ -59,8 +66,10 @@ export default function SettingsScreen() {
   const [isChangingPIN, setIsChangingPIN] = useState(false);
   const [showSecurityQ, setShowSecurityQ] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_NOTIF_PREFS);
+  const [autoExportPrefs, setAutoExportPrefs] = useState<AutoExportPrefs>(DEFAULT_AUTO_EXPORT_PREFS);
 
   React.useEffect(() => { getNotifPrefs().then(setNotifPrefs); }, []);
+  React.useEffect(() => { getAutoExportPrefs().then(setAutoExportPrefs); }, []);
 
   const markDirty = () => setProfileDirty(true);
   const selectedCountry = getCountryByCode(editCountry);
@@ -140,6 +149,13 @@ export default function SettingsScreen() {
     await saveNotifPrefs(next);
   };
 
+  const handleAutoExportInterval = async (interval: AutoExportInterval) => {
+    Haptics.selectionAsync();
+    const next: AutoExportPrefs = { ...autoExportPrefs, interval };
+    setAutoExportPrefs(next);
+    await saveAutoExportPrefs(next);
+  };
+
   const handleBudgetAlertsToggle = async (value: boolean) => {
     Haptics.selectionAsync();
     if (value) {
@@ -190,6 +206,53 @@ export default function SettingsScreen() {
 
     <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("yourData")}</Text>
     <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border }]}><Row icon="upload" label={t("exportBackup")} sublabel={t("exportBackupSub")} onPress={handleExport} tint={col.primary} col={col} /><Row icon="download" label={t("importBackup")} sublabel={t("importBackupSub")} onPress={handleImport} tint={col.primary} col={col} /></View>
+
+    {/* ── Auto Backup section ───────────────────────────────────────────── */}
+    <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("autoBackup")}</Text>
+    <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border }]}>
+      <View style={{ padding: 14, paddingBottom: 10 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          <View style={[styles.rowIcon, { backgroundColor: col.primary + "18" }]}>
+            <Feather name="shield" size={17} color={col.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.rowLabel, { color: col.foreground }]}>{t("autoBackup")}</Text>
+            <Text style={[styles.rowSublabel, { color: col.mutedForeground }]}>{t("autoBackupSub")}</Text>
+          </View>
+        </View>
+        <Text style={[styles.rowSublabel, { color: col.mutedForeground, marginBottom: 10, marginTop: 4 }]}>{t("autoBackupInterval")}</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+          {(["off", "daily", "weekly", "monthly"] as AutoExportInterval[]).map((iv) => {
+            const active = autoExportPrefs.interval === iv;
+            const labelKey = iv === "off" ? "autoBackupOff" : iv === "daily" ? "autoBackupDaily" : iv === "weekly" ? "autoBackupWeekly" : "autoBackupMonthly";
+            return (
+              <TouchableOpacity
+                key={iv}
+                style={[styles.timeChip, { borderColor: active ? col.primary : col.border, backgroundColor: active ? col.secondary : "transparent" }]}
+                onPress={() => handleAutoExportInterval(iv)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.timeChipText, { color: active ? col.primary : col.mutedForeground }]}>{t(labelKey as any)}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {autoExportPrefs.interval !== "off" && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 14 }}>
+            <Feather name="check-circle" size={14} color="#10B981" />
+            <Text style={[styles.rowSublabel, { color: col.mutedForeground }]}>
+              {t("autoBackupLastSaved")}{": "}
+              {autoExportPrefs.lastExportedAt
+                ? new Date(autoExportPrefs.lastExportedAt).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US", { month: "short", day: "numeric", year: "numeric" })
+                : t("autoBackupNever")}
+            </Text>
+          </View>
+        )}
+        {Platform.OS === "web" && autoExportPrefs.interval !== "off" && (
+          <Text style={[styles.rowSublabel, { color: col.mutedForeground, marginTop: 8, fontStyle: "italic" }]}>{t("autoBackupWebNote")}</Text>
+        )}
+      </View>
+    </View>
 
     <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("privacy")}</Text>
     <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, padding: 0 }]}>

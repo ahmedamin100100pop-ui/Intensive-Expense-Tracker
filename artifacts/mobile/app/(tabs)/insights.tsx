@@ -7,6 +7,7 @@ import type { InsightType } from "@/components/InsightCard";
 import { SmartBudgetSection } from "@/components/SmartBudgetSection";
 import { getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
+import { getCountryByCode } from "@/constants/translations";
 import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useColors } from "@/hooks/useColors";
@@ -23,6 +24,10 @@ export default function InsightsScreen() {
   const insets = useSafeAreaInsets();
   const { summary, userProfile, categoryBudgets } = useApp();
   const { t, language } = useLanguage();
+  const currency = getCountryByCode(userProfile?.countryCode).symbol;
+  // Format an amount with the correct currency symbol and placement (RTL-aware)
+  const fmt = (n: number) =>
+    language === "ar" ? `${n.toFixed(0)}${currency}` : `${currency}${n.toFixed(0)}`;
 
   const insights = useMemo<Insight[]>(() => {
     if (!summary) return [];
@@ -35,7 +40,7 @@ export default function InsightsScreen() {
         id: "top_cat",
         title: t("insightTopCatTitle", { category: catLabel }),
         description: t("insightTopCatDesc", {
-          amount: summary.categoryTotals[summary.topCategory].toFixed(0),
+          amount: fmt(summary.categoryTotals[summary.topCategory]),
           category: catLabel,
         }),
         type: "info",
@@ -51,8 +56,8 @@ export default function InsightsScreen() {
           ? t("insightSpendingUpTitle", { pct: summary.percentChange.toFixed(0) })
           : t("insightSpendingDownTitle", { pct: Math.abs(summary.percentChange).toFixed(0) }),
         description: more
-          ? t("insightSpendingUpDesc", { curr: summary.totalCurrentMonth.toFixed(0), prev: summary.totalPreviousMonth.toFixed(0) })
-          : t("insightSpendingDownDesc", { curr: summary.totalCurrentMonth.toFixed(0), prev: summary.totalPreviousMonth.toFixed(0) }),
+          ? t("insightSpendingUpDesc", { curr: fmt(summary.totalCurrentMonth), prev: fmt(summary.totalPreviousMonth) })
+          : t("insightSpendingDownDesc", { curr: fmt(summary.totalCurrentMonth), prev: fmt(summary.totalPreviousMonth) }),
         type: more ? "warning" : "success",
       });
     }
@@ -65,8 +70,8 @@ export default function InsightsScreen() {
           id: "weekend",
           title: t("insightWeekendTitle"),
           description: t("insightWeekendDesc", {
-            weekend: summary.weekendTotal.toFixed(0),
-            weekday: summary.weekdayTotal.toFixed(0),
+            weekend: fmt(summary.weekendTotal),
+            weekday: fmt(summary.weekdayTotal),
           }),
           type: "tip",
         });
@@ -79,7 +84,8 @@ export default function InsightsScreen() {
         id: "small",
         title: t("insightSmallTitle"),
         description: t("insightSmallDesc", {
-          total: summary.smallPurchasesTotal.toFixed(0),
+          threshold: fmt(10),
+          total: fmt(summary.smallPurchasesTotal),
           pct: summary.smallPurchasesPercent.toFixed(0),
         }),
         type: "tip",
@@ -90,7 +96,7 @@ export default function InsightsScreen() {
     if (summary.unusualExpenses.length > 0) {
       const count = summary.unusualExpenses.length;
       const items = summary.unusualExpenses
-        .map((e) => `$${e.amount.toFixed(0)} (${getCategoryLabel(e.category, language)})`)
+        .map((e) => `${fmt(e.amount)} (${getCategoryLabel(e.category, language)})`)
         .slice(0, 3)
         .join(", ");
       list.push({
@@ -112,9 +118,9 @@ export default function InsightsScreen() {
           id: "over_budget",
           title: t("insightOverBudgetTitle"),
           description: t("insightOverBudgetDesc", {
-            spent: summary.totalCurrentMonth.toFixed(0),
-            budget: userProfile.monthlyBudget.toFixed(0),
-            over: (summary.totalCurrentMonth - userProfile.monthlyBudget).toFixed(0),
+            spent: fmt(summary.totalCurrentMonth),
+            budget: fmt(userProfile.monthlyBudget),
+            over: fmt(summary.totalCurrentMonth - userProfile.monthlyBudget),
           }),
           type: "warning",
         });
@@ -124,7 +130,7 @@ export default function InsightsScreen() {
           title: t("insightNearBudgetTitle"),
           description: t("insightNearBudgetDesc", {
             pct: (budgetPct * 100).toFixed(0),
-            left: (userProfile.monthlyBudget - summary.totalCurrentMonth).toFixed(0),
+            left: fmt(userProfile.monthlyBudget - summary.totalCurrentMonth),
           }),
           type: "warning",
         });
@@ -133,8 +139,8 @@ export default function InsightsScreen() {
           id: "on_track",
           title: t("insightOnTrackTitle"),
           description: t("insightOnTrackDesc", {
-            spent: summary.totalCurrentMonth.toFixed(0),
-            budget: userProfile.monthlyBudget.toFixed(0),
+            spent: fmt(summary.totalCurrentMonth),
+            budget: fmt(userProfile.monthlyBudget),
           }),
           type: "success",
         });
@@ -151,10 +157,10 @@ export default function InsightsScreen() {
           id: `cat_over_${cb.category}`,
           title: t("insightCatOverTitle", { category: catLabel }),
           description: t("insightCatOverDesc", {
-            spent: spent.toFixed(0),
+            spent: fmt(spent),
             category: catLabel,
-            over: (spent - cb.budgetAmount).toFixed(0),
-            limit: cb.budgetAmount.toFixed(0),
+            over: fmt(spent - cb.budgetAmount),
+            limit: fmt(cb.budgetAmount),
           }),
           type: "warning",
         });
@@ -163,8 +169,8 @@ export default function InsightsScreen() {
           id: `cat_warn_${cb.category}`,
           title: t("insightCatWarnTitle", { category: catLabel, pct: (pct * 100).toFixed(0) }),
           description: t("insightCatWarnDesc", {
-            spent: spent.toFixed(0),
-            limit: cb.budgetAmount.toFixed(0),
+            spent: fmt(spent),
+            limit: fmt(cb.budgetAmount),
             category: catLabel.toLowerCase(),
           }),
           type: "tip",
@@ -178,15 +184,15 @@ export default function InsightsScreen() {
       const overBudget = projected > (userProfile?.monthlyBudget ?? Infinity);
       list.push({
         id: "daily_avg",
-        title: t("insightDailyTitle", { avg: summary.averageDaily.toFixed(0) }),
+        title: t("insightDailyTitle", { avg: fmt(summary.averageDaily) }),
         description: (overBudget ? t("insightDailyDescOver") : t("insightDailyDescOk"))
-          .replace("{projected}", projected.toFixed(0)),
+          .replace("{projected}", fmt(projected)),
         type: "info",
       });
     }
 
     return list;
-  }, [summary, userProfile, categoryBudgets, t, language]);
+  }, [summary, userProfile, categoryBudgets, t, language, currency, fmt]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const botPad = Platform.OS === "web" ? 34 : insets.bottom;

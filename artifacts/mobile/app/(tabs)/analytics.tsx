@@ -19,6 +19,7 @@ import { getCategoryColor, getCategoryLabel } from "@/components/CategoryIcon";
 import { DonutChart } from "@/components/DonutChart";
 import { SpendingLineChart } from "@/components/SpendingLineChart";
 import colors from "@/constants/colors";
+import { getCountryByCode } from "@/constants/translations";
 import type { Category } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -59,6 +60,7 @@ export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const { expenses, userProfile } = useApp();
   const { t, language } = useLanguage();
+  const currency = getCountryByCode(userProfile?.countryCode).symbol;
   const [periodType, setPeriodType] = useState<PeriodType>("month");
   const [txView, setTxView] = useState<TxView>("expense");
   const [exporting, setExporting] = useState(false);
@@ -177,7 +179,7 @@ export default function AnalyticsScreen() {
     }
   };
 
-  const totalFormatted = `$${totalSpent.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const totalFormatted = `${currency}${totalSpent.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 
   const PERIOD_LABELS: Record<PeriodType, string> = {
     day: t("day"),
@@ -325,7 +327,7 @@ export default function AnalyticsScreen() {
                   <View style={[styles.breakdownDot, { backgroundColor: getCategoryColor(d.category) }]} />
                   <Text style={[styles.breakdownLabel, { color: col.foreground }]}>{getCategoryLabel(d.category, language)}</Text>
                   <View style={styles.breakdownRight}>
-                    <Text style={[styles.breakdownAmount, { color: col.foreground }]}>${d.amount.toFixed(0)}</Text>
+                    <Text style={[styles.breakdownAmount, { color: col.foreground }]}>{currency}{d.amount.toFixed(0)}</Text>
                     <Text style={[styles.breakdownPct, { color: col.mutedForeground }]}>{d.percentage.toFixed(1)}%</Text>
                   </View>
                 </View>

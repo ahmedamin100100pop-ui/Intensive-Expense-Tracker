@@ -19,6 +19,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { AutoExportManager } from "@/components/AutoExportManager";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LockScreen } from "@/components/LockScreen";
 import { NotificationManager } from "@/components/NotificationManager";
@@ -82,6 +83,7 @@ export default function RootLayout() {
                     <SecurityGate>
                       <RootLayoutNav />
                       <NotificationManager />
+                      <AutoExportManager />
                     </SecurityGate>
                   </KeyboardProvider>
                 </GestureHandlerRootView>

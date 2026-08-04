@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BudgetProgressCard } from "@/components/BudgetProgressCard";
 import { getCategoryLabel } from "@/components/CategoryIcon";
 import colors from "@/constants/colors";
+import { getCountryByCode } from "@/constants/translations";
 import type { Category } from "@/context/AppContext";
 import { useApp } from "@/context/AppContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -32,6 +33,7 @@ export default function BudgetScreen() {
   const insets = useSafeAreaInsets();
   const { summary, userProfile, categoryBudgets, setCategoryBudget, setUserProfile } = useApp();
   const { t, language } = useLanguage();
+  const currency = getCountryByCode(userProfile?.countryCode).symbol;
 
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [editAmount, setEditAmount] = useState("");
@@ -86,7 +88,7 @@ export default function BudgetScreen() {
           <View style={styles.overallHeader}>
             <View>
               <Text style={styles.overallLabel}>{t("monthlyBudget")}</Text>
-              <Text style={styles.overallAmount}>${totalBudget.toLocaleString()}</Text>
+              <Text style={styles.overallAmount}>{currency}{totalBudget.toLocaleString()}</Text>
             </View>
             <TouchableOpacity
               style={styles.editMonthly}
@@ -100,7 +102,7 @@ export default function BudgetScreen() {
               <View style={[styles.overallFill, { width: `${Math.min(overallPct * 100, 100)}%`, backgroundColor: overallPct > 0.9 ? "#FBBF24" : "rgba(255,255,255,0.9)" }]} />
             </View>
             <Text style={styles.overallSub}>
-              ${totalSpent.toFixed(0)} {t("spent")} · ${Math.max(totalBudget - totalSpent, 0).toFixed(0)} {t("left")}
+              {currency}{totalSpent.toFixed(0)} {t("spent")} · {currency}{Math.max(totalBudget - totalSpent, 0).toFixed(0)} {t("left")}
             </Text>
           </View>
         </View>
@@ -148,7 +150,7 @@ export default function BudgetScreen() {
               {t("budgetModal", { category: getCategoryLabel(editCategory ?? "other", language) })}
             </Text>
             <View style={[styles.modalInput, { borderColor: col.border, backgroundColor: col.background }]}>
-              <Text style={[styles.modalCurrency, { color: col.mutedForeground }]}>$</Text>
+              <Text style={[styles.modalCurrency, { color: col.mutedForeground }]}>{currency}</Text>
               <TextInput
                 style={[styles.modalInputText, { color: col.foreground }]}
                 placeholder="300"
@@ -177,7 +179,7 @@ export default function BudgetScreen() {
           <View style={[styles.modalCard, { backgroundColor: col.card, borderColor: col.border, borderRadius: colors.radius + 4 }]}>
             <Text style={[styles.modalTitle, { color: col.foreground }]}>{t("monthlyBudget")}</Text>
             <View style={[styles.modalInput, { borderColor: col.border, backgroundColor: col.background }]}>
-              <Text style={[styles.modalCurrency, { color: col.mutedForeground }]}>$</Text>
+              <Text style={[styles.modalCurrency, { color: col.mutedForeground }]}>{currency}</Text>
               <TextInput
                 style={[styles.modalInputText, { color: col.foreground }]}
                 placeholder="2500"
