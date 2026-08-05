@@ -7,13 +7,11 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "pnpm": "9.15.9",
-      "workingDirectory": "artifacts/mobile"
+      "pnpm": "9.15.9"
     },
     "preview": {
       "distribution": "internal",
       "pnpm": "9.15.9",
-      "workingDirectory": "artifacts/mobile",
       "android": {
         "buildType": "apk"
       }
@@ -21,7 +19,6 @@
     "production": {
       "autoIncrement": true,
       "pnpm": "9.15.9",
-      "workingDirectory": "artifacts/mobile",
       "android": {
         "buildType": "apk"
       }
