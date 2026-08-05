@@ -6,13 +6,22 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "pnpm": "9.15.9"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "pnpm": "9.15.9",
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "pnpm": "9.15.9",
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

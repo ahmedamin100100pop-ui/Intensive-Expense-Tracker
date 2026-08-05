@@ -1,6 +1,14 @@
-
+{
+  "expo": {
+    "name": "Intensive",
+    "slug": "intensive",
     "android": {
       "package": "com.ahmedameen01.workspace"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "480dc729-3413-4015-854c-c265e4f4ae94"
+      }
     }
   }
 }
