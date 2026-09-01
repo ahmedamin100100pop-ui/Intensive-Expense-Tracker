@@ -74,7 +74,7 @@ export async function runSilentExport(
 
   const payload = {
     version: 1,
-    appName: "Intensive",
+    appName: "Rasheed",
     exportedAt: new Date().toISOString(),
     language,
     countryCode: userProfile?.countryCode,
@@ -84,7 +84,7 @@ export async function runSilentExport(
   };
 
   const dateStr = new Date().toISOString().split("T")[0];
-  const fileName = `intensive-backup-${dateStr}.json`;
+  const fileName = `rasheed-backup-${dateStr}.json`;
   const jsonStr = JSON.stringify(payload, null, 2);
 
   try {

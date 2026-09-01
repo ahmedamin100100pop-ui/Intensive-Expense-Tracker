@@ -1,4 +1,6 @@
-# Intensive — Personal Finance Tracker
+# Rasheed — Your simple money advisor
+
+**رشيد: عقلك الثاني لإدارة مصروفاتك المالية**
 
 A bilingual (English / Arabic) mobile expense-tracking app built with **Expo / React Native**.  
 Track spending, set budgets, gain AI-powered insights, and export your data — all with a clean, RTL-aware UI.

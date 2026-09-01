@@ -79,6 +79,10 @@ function Key({
 export function LockScreen() {
   const { verifyPin, unlock, authenticateWithBiometric, isBiometricEnabled, isBiometricAvailable, hasSecurityQuestion } = useSecurity();
   const { t, language } = useLanguage();
+  const appName = language === "ar" ? "رشيد" : "Rasheed";
+  const appTagline = language === "ar"
+    ? "عقلك الثاني لإدارة مصروفاتك المالية"
+    : "Your simple money advisor";
 
   const [entered, setEntered]         = useState("");
   const [error, setError]             = useState("");
@@ -175,9 +179,9 @@ export function LockScreen() {
         <View style={styles.iconWrap}>
           <MaterialCommunityIcons name="lock" size={28} color="#fff" />
         </View>
-        <Text style={styles.appName}>Intensive</Text>
+        <Text style={styles.appName}>{appName}</Text>
         <Text style={styles.subtitle}>
-          {locked ? t("tooManyAttempts") : t("enterPIN")}
+          {locked ? t("tooManyAttempts") : appTagline}
         </Text>
       </View>
 

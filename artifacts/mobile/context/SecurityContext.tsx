@@ -155,7 +155,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   async function doTryBiometric() {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage:         "Authenticate to open Intensive",
+        promptMessage:         "Authenticate to open Rasheed",
         cancelLabel:           "Use PIN",
         disableDeviceFallback: true,
       });
@@ -195,7 +195,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const authenticateWithBiometric = useCallback(async (): Promise<boolean> => {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage:         "Authenticate to open Intensive",
+        promptMessage:         "Authenticate to open Rasheed",
         cancelLabel:           "Use PIN",
         disableDeviceFallback: true,
       });

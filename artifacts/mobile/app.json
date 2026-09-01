@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Intensive",
+    "name": "Rasheed: Your simple money advisor",
     "slug": "intensive",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -19,13 +19,13 @@
       "bundleIdentifier": "com.intensive.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSUserNotificationUsageDescription": "Intensive sends budget alerts and daily spending reminders."
+        "NSUserNotificationUsageDescription": "Rasheed sends budget alerts and daily spending reminders."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#4F46E5"
+        "backgroundColor": "#F6F6FB"
       },
       "package": "com.intensive.app",
       "permissions": [

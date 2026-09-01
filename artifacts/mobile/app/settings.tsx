@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -183,6 +184,20 @@ export default function SettingsScreen() {
     await updateNotifPrefs({ reminderHour: hour, reminderMinute: minute });
   };
 
+  const handleContactDeveloper = async () => {
+    Haptics.selectionAsync();
+    try {
+      const telegramUrl = "https://t.me/ahmedteck";
+      if (await Linking.canOpenURL(telegramUrl)) {
+        await Linking.openURL(telegramUrl);
+      } else {
+        Alert.alert("", t("contactDeveloperUnavailable"));
+      }
+    } catch {
+      Alert.alert("", t("contactDeveloperUnavailable"));
+    }
+  };
+
   const expenseCount = expenses.filter((e) => !e.isIncome).length;
   const incomeCount = expenses.filter((e) => e.isIncome).length;
   const backupSize = (() => { const bytes = new TextEncoder().encode(JSON.stringify({ expenses, userProfile, categoryBudgets })).length; return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`; })();
@@ -327,6 +342,11 @@ export default function SettingsScreen() {
           </View>
         </View>
       )}
+    </View>
+
+    <Text style={[styles.sectionTitle, { color: col.mutedForeground }]}>{t("support")}</Text>
+    <View style={[styles.card, { backgroundColor: col.card, borderColor: col.border, padding: 0 }]}>
+      <Row icon="send" label={t("contactDeveloper")} sublabel={t("contactDeveloperSub")} onPress={handleContactDeveloper} tint={col.primary} col={col} />
     </View>
 
     <PINSetupModal

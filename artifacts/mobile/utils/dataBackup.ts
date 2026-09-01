@@ -51,7 +51,7 @@ function webPickJsonFile(): Promise<BackupData> {
         try {
           const data = JSON.parse(e.target?.result as string) as BackupData;
           if (!data || !Array.isArray(data.expenses)) {
-            reject(new Error('This file does not appear to be an Intensive backup (missing "expenses" field).'));
+            reject(new Error('This file does not appear to be a Rasheed backup (missing "expenses" field).'));
           } else {
             resolve(data);
           }
@@ -92,7 +92,7 @@ async function nativeExport(jsonStr: string, fileName: string): Promise<void> {
 
   await Sharing.shareAsync(file.uri, {
     mimeType: "application/json",
-    dialogTitle: `Intensive Backup – ${fileName}`,
+    dialogTitle: `Rasheed Backup – ${fileName}`,
   });
 }
 
@@ -117,7 +117,7 @@ async function nativeImport(): Promise<BackupData> {
   }
 
   if (!data || !Array.isArray(data.expenses)) {
-    throw new Error('This file does not appear to be an Intensive backup (missing "expenses" field).');
+    throw new Error('This file does not appear to be a Rasheed backup (missing "expenses" field).');
   }
 
   return data;
@@ -133,7 +133,7 @@ export async function exportBackup(
 ): Promise<void> {
   const payload: BackupData = {
     version: BACKUP_VERSION,
-    appName: "Intensive",
+    appName: "Rasheed",
     exportedAt: new Date().toISOString(),
     language,
     countryCode: userProfile?.countryCode,
@@ -143,7 +143,7 @@ export async function exportBackup(
   };
 
   const dateStr = new Date().toISOString().split("T")[0];
-  const fileName = `intensive-backup-${dateStr}.json`;
+  const fileName = `rasheed-backup-${dateStr}.json`;
   const jsonStr = JSON.stringify(payload, null, 2);
 
   if (Platform.OS === "web") {
