@@ -50,8 +50,9 @@ export default function ReportScreen() {
   const monthlyData = (() => {
     const monthMap: Record<string, number> = {};
     expenses.forEach((e) => { const k = e.date.slice(0, 7); monthMap[k] = (monthMap[k] ?? 0) + e.amount; });
+    const locale = language === "ar" ? "ar-SA" : "en-US";
     return Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0])).slice(-6)
-      .map(([k, v]) => ({ label: new Date(k + "-01").toLocaleDateString("en-US", { month: "short" }), amount: v }));
+      .map(([k, v]) => ({ label: new Date(k + "-01").toLocaleDateString(locale, { month: "short" }), amount: v }));
   })();
 
   const handleExport = async () => {
@@ -100,7 +101,7 @@ export default function ReportScreen() {
         <View style={[styles.summaryCard, { backgroundColor: col.primary, borderRadius: colors.radius + 4 }]}>
           <Text style={styles.summaryLabel}>{t("totalSpent")}</Text>
           <Text style={styles.summaryAmount}>
-            ${currency}${summary.totalCurrentMonth.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            {currency}{summary.totalCurrentMonth.toLocaleString(language === "ar" ? "ar-SA" : "en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
           </Text>
           <View style={[styles.summaryBadge, { backgroundColor: pct > 0 ? "rgba(251,191,36,0.2)" : "rgba(16,185,129,0.2)" }]}>
             <Feather name={pct > 0 ? "trending-up" : "trending-down"} size={14} color={pct > 0 ? "#FBBF24" : "#6EE7B7"} />

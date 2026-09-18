@@ -2,8 +2,8 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 
-import { getCountryByCode, getCategoryLabelForLang, type LanguageCode } from "@/constants/translations";
-import type { Category, Expense, UserProfile } from "@/context/AppContext";
+import { getCountryByCode, getCategoryLabelForLang, type LanguageCode } from "../constants/translations";
+import type { Category, Expense, UserProfile } from "../context/AppContext";
 
 const CATEGORY_COLORS: Record<Category, string> = {
   food: "#F97316", transport: "#3B82F6", shopping: "#EC4899",
@@ -36,7 +36,7 @@ function formatDate(dateStr: string, locale: string): string {
   return d.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
-interface PDFOptions {
+export interface PDFOptions {
   expenses: Expense[];
   userProfile: UserProfile | null;
   language: LanguageCode;
@@ -45,7 +45,7 @@ interface PDFOptions {
   monthlyData?: { label: string; amount: number }[];
 }
 
-export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
+export function renderPDFHTML(opts: PDFOptions): string {
   const { expenses, userProfile, language, periodLabel, periodType, monthlyData } = opts;
   const userName = userProfile?.name?.trim() || "Rasheed User";
   const locale = language === "ar" ? "ar-SA" : "en-US";
@@ -67,6 +67,20 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
   })();
 
   const topCat = sortedCats[0]?.[0];
+  const topCatAmount = topCat ? catTotals[topCat] ?? 0 : 0;
+  const topCatPct = total > 0 ? (topCatAmount / total) * 100 : 0;
+  const averageTransaction = expenses.length > 0 ? total / expenses.length : 0;
+  const largestExpense = expenses.reduce<Expense | null>(
+    (largest, expense) => (!largest || expense.amount > largest.amount ? expense : largest),
+    null,
+  );
+  const dailyTotals = expenses.reduce<Record<string, number>>((days, expense) => {
+    days[expense.date] = (days[expense.date] ?? 0) + expense.amount;
+    return days;
+  }, {});
+  const busiestDay = Object.entries(dailyTotals).sort((a, b) => b[1] - a[1])[0];
+  const budget = userProfile?.monthlyBudget ?? 0;
+  const budgetRatio = periodType === "month" && budget > 0 ? total / budget : null;
   const generatedAt = new Date().toLocaleDateString(locale, {
     month: "long", day: "numeric", year: "numeric",
   });
@@ -94,7 +108,7 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
   }).join("");
 
   // Build expense table rows
-  const expenseRowsHTML = expenses
+  const expenseRowsHTML = [...expenses]
     .sort((a, b) => b.date.localeCompare(a.date))
     .map((e, i) => {
       const color = CATEGORY_COLORS[e.category];
@@ -113,7 +127,77 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
         </tr>`;
     }).join("");
 
-  // Monthly bar chart HTML (for month/year views)
+  const analysisLead = topCat
+    ? language === "ar"
+      ? `تركّز ${topCatPct.toFixed(1)}% من إنفاقك في فئة ${getCategoryLabelForLang(topCat, language)}.`
+      : `${topCatPct.toFixed(1)}% of your spending went to ${getCategoryLabelForLang(topCat, language)}.`
+    : language === "ar"
+      ? "أضف عمليات أكثر للحصول على تحليل أدق."
+      : "Add more transactions to get a more detailed analysis.";
+
+  const analysisItems = [
+    topCat
+      ? {
+          label: language === "ar" ? "أعلى فئة" : "Top category",
+          value: getCategoryLabelForLang(topCat, language),
+          detail: `${topCatPct.toFixed(1)}% · ${formatCurrency(topCatAmount, currency, locale)}`,
+        }
+      : null,
+    largestExpense
+      ? {
+          label: language === "ar" ? "أكبر عملية" : "Largest transaction",
+          value: formatCurrency(largestExpense.amount, currency, locale),
+          detail: formatDate(largestExpense.date, locale),
+        }
+      : null,
+    busiestDay
+      ? {
+          label: language === "ar" ? "أكثر يوم إنفاقًا" : "Busiest spending day",
+          value: formatCurrency(busiestDay[1], currency, locale),
+          detail: formatDate(busiestDay[0], locale),
+        }
+      : null,
+    {
+      label: language === "ar" ? "متوسط العملية" : "Average transaction",
+      value: formatCurrency(averageTransaction, currency, locale),
+      detail: `${expenses.length} ${language === "ar" ? "عملية" : expenses.length === 1 ? "transaction" : "transactions"}`,
+    },
+    budgetRatio !== null
+      ? {
+          label: language === "ar" ? "استخدام الميزانية" : "Budget used",
+          value: `${(budgetRatio * 100).toFixed(1)}%`,
+          detail: `${formatCurrency(total, currency, locale)} / ${formatCurrency(budget, currency, locale)}`,
+        }
+      : null,
+  ].filter((item): item is { label: string; value: string; detail: string } => item !== null);
+
+  const analysisHTML = `
+    <div class="section analysis-section">
+      <div class="section-title">${language === "ar" ? "التحليل" : "Analysis"}</div>
+      <div class="analysis-box">
+        <div class="analysis-lead">${analysisLead}</div>
+        <div class="analysis-grid">
+          ${analysisItems.map((item) => `
+            <div class="analysis-item">
+              <div class="analysis-label">${item.label}</div>
+              <div class="analysis-value">${item.value}</div>
+              <div class="analysis-detail">${item.detail}</div>
+            </div>`).join("")}
+        </div>
+        ${budgetRatio !== null ? `
+          <div class="budget-analysis ${budgetRatio > 1 ? "over" : ""}">
+            <div class="budget-analysis-header">
+              <span>${language === "ar" ? (budgetRatio > 1 ? "تجاوزت ميزانيتك الشهرية" : "التقدم نحو الميزانية الشهرية") : (budgetRatio > 1 ? "Monthly budget exceeded" : "Progress toward monthly budget")}</span>
+              <strong>${Math.min(budgetRatio * 100, 100).toFixed(1)}%</strong>
+            </div>
+            <div class="budget-analysis-track">
+              <div class="budget-analysis-fill" style="width:${Math.min(budgetRatio * 100, 100)}%"></div>
+            </div>
+          </div>` : ""}
+      </div>
+    </div>`;
+
+  // Time-series bar chart HTML (for month/year views)
   let barChartHTML = "";
   if (monthlyData && monthlyData.length > 0) {
     const maxVal = Math.max(...monthlyData.map((d) => d.amount), 1);
@@ -122,12 +206,12 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
       return `
         <div class="bar-col">
           <div class="bar-val">${d.amount >= 1000 ? `${currency}${(d.amount / 1000).toFixed(1)}k` : `${currency}${d.amount.toFixed(0)}`}</div>
-          <div class="bar-fill" style="height:${heightPct}%;background:#4F46E5;opacity:${d.amount === maxVal ? 1 : 0.55}"></div>
+          <div class="bar-plot"><div class="bar-fill" style="height:${heightPct}%;background:#4F46E5;opacity:${d.amount === maxVal ? 1 : 0.55}"></div></div>
           <div class="bar-label">${d.label}</div>
         </div>`;
     }).join("");
     barChartHTML = `
-      <div class="section">
+      <div class="section time-series-section">
         <div class="section-title">${language === "ar" ? "الإنفاق عبر الوقت" : "Spending over time"}</div>
         <div class="bar-chart">${bars}</div>
       </div>`;
@@ -175,6 +259,7 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:#F0F0F8;color:#111827;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  @page{size:A4;margin:0}
   .page{background:#fff;max-width:720px;margin:0 auto;min-height:100vh}
 
   /* HEADER */
@@ -213,15 +298,32 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
   .progress-fill{height:100%;border-radius:4px}
 
   /* BAR CHART */
-  .bar-chart{display:flex;align-items:flex-end;gap:6px;height:120px;padding-bottom:4px}
-  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%}
-  .bar-val{font-size:8px;color:#6B7280;font-weight:600;text-align:center;flex-shrink:0}
-  .bar-fill{width:100%;border-radius:4px 4px 0 0;flex-shrink:0}
-  .bar-label{font-size:8px;color:#9CA3AF;text-align:center;flex-shrink:0;font-weight:500}
+  .analysis-box{background:#F6F6FB;border:1px solid #EBEBF8;border-radius:12px;padding:16px}
+  .analysis-lead{font-size:13px;font-weight:700;color:#111827;line-height:1.5;margin-bottom:14px}
+  .analysis-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .analysis-item{background:#fff;border-radius:9px;padding:11px 12px;min-height:68px}
+  .analysis-label{font-size:9px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:5px}
+  .analysis-value{font-size:14px;font-weight:800;color:#4F46E5;line-height:1.2}
+  .analysis-detail{font-size:10px;color:#6B7280;margin-top:3px}
+  .budget-analysis{margin-top:12px;background:#fff;border-radius:9px;padding:11px 12px}
+  .budget-analysis.over{background:#FFF7ED}
+  .budget-analysis-header{display:flex;justify-content:space-between;gap:10px;font-size:10px;color:#6B7280;margin-bottom:7px}
+  .budget-analysis-header strong{color:#4F46E5}
+  .budget-analysis.over .budget-analysis-header strong{color:#EA580C}
+  .budget-analysis-track{height:7px;background:#E5E7EB;border-radius:4px;overflow:hidden}
+  .budget-analysis-fill{height:100%;background:#4F46E5;border-radius:4px}
+  .budget-analysis.over .budget-analysis-fill{background:#EA580C}
+  .bar-chart{display:flex;align-items:stretch;gap:7px;height:154px;padding:0 2px 4px}
+  .bar-col{flex:1;display:grid;grid-template-rows:16px 1fr 18px;align-items:end;min-width:0}
+  .bar-val{font-size:8px;color:#6B7280;font-weight:600;text-align:center;white-space:nowrap}
+  .bar-plot{height:100%;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid #E5E7EB}
+  .bar-fill{width:72%;min-height:4px;border-radius:4px 4px 0 0}
+  .bar-label{font-size:8px;color:#9CA3AF;text-align:center;font-weight:500;white-space:nowrap;padding-top:4px}
 
   /* TABLE */
-  .table-wrap{overflow:hidden;border-radius:12px;border:1px solid #F3F4F6}
+  .table-wrap{overflow:visible;border-radius:12px;border:1px solid #F3F4F6}
   table{width:100%;border-collapse:collapse;font-size:12px}
+  thead{display:table-header-group}
   th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#9CA3AF;padding:12px 14px;text-align:left;background:#FAFAFA;border-bottom:1px solid #F3F4F6}
   td{padding:11px 14px;border-bottom:1px solid #F9FAFB;color:#374151;vertical-align:middle}
   .row-alt td{background:#FAFAFA}
@@ -233,6 +335,15 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
   .footer{background:#F6F6FB;padding:24px 40px;text-align:center;border-top:1px solid #EBEBF8}
   .footer-text{font-size:11px;color:#9CA3AF}
   .footer-brand{font-weight:700;color:#4F46E5}
+
+  /* PRINT PAGINATION */
+  @media print{
+    .summary-section,.analysis-section,.time-series-section,.categories-section{
+      break-inside:avoid;page-break-inside:avoid
+    }
+    .analysis-item,.cat-row,tr{break-inside:avoid;page-break-inside:avoid}
+    .transactions-section{break-inside:auto;page-break-inside:auto}
+  }
 </style>
 </head>
 <body>
@@ -251,21 +362,23 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
 
   <div class="content">
 
-    <div class="section">
+    <div class="section summary-section">
       <div class="section-title">${language === "ar" ? "الملخص" : "Summary"}</div>
       ${statsHTML}
     </div>
 
+    ${analysisHTML}
+
     ${barChartHTML}
 
     ${sortedCats.length > 0 ? `
-    <div class="section">
+    <div class="section categories-section">
       <div class="section-title">${language === "ar" ? "الإنفاق حسب الفئة" : "Spending by category"}</div>
       ${categoryRowsHTML}
     </div>` : ""}
 
     ${expenses.length > 0 ? `
-    <div class="section">
+    <div class="section transactions-section">
       <div class="section-title">${language === "ar" ? `كل العمليات (${expenses.length})` : `All transactions (${expenses.length})`}</div>
       <div class="table-wrap">
         <table>
@@ -295,6 +408,12 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
 </body>
 </html>`;
 
+  return html;
+}
+
+export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
+  const html = renderPDFHTML(opts);
+
   if (Platform.OS === "web") {
     // Open HTML in a new tab — user can File → Print → Save as PDF
     const win = window.open("", "_blank");
@@ -309,7 +428,7 @@ export async function generateAndSharePDF(opts: PDFOptions): Promise<void> {
     if (canShare) {
       await Sharing.shareAsync(uri, {
         mimeType: "application/pdf",
-        dialogTitle: `Rasheed Report – ${periodLabel}`,
+        dialogTitle: `Rasheed Report – ${opts.periodLabel}`,
         UTI: "com.adobe.pdf",
       });
     }

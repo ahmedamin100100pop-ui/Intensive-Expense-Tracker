@@ -34,14 +34,14 @@ type TxView = "expense" | "income";
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 
-function dayLabel(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
+function dayLabel(dateStr: string, language: "en" | "ar"): string {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString(language === "ar" ? "ar-SA" : "en-US", {
     weekday: "long", month: "long", day: "numeric", year: "numeric",
   });
 }
 
-function monthLabel(year: number, month: number): string {
-  return new Date(year, month, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+function monthLabel(year: number, month: number, language: "en" | "ar"): string {
+  return new Date(year, month, 1).toLocaleDateString(language === "ar" ? "ar-SA" : "en-US", { month: "long", year: "numeric" });
 }
 
 function prevDay(d: string): string {
@@ -127,12 +127,12 @@ export default function AnalyticsScreen() {
       const monthMap: Record<string, number> = {};
       filtered.forEach((e) => { const k = e.date.slice(0, 7); monthMap[k] = (monthMap[k] ?? 0) + e.amount; });
       const arr = Object.entries(monthMap).sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([k, v]) => ({ label: new Date(k + "-01").toLocaleDateString("en-US", { month: "short" }), value: v }));
+        .map(([k, v]) => ({ label: new Date(k + "-01").toLocaleDateString(language === "ar" ? "ar-SA" : "en-US", { month: "short" }), value: v }));
       if (arr.length === 1) arr.push({ ...arr[0] });
       return arr;
     }
     return [];
-  }, [periodType, filtered]);
+  }, [periodType, filtered, language]);
 
   const monthlyDataForPDF = useMemo(() => {
     if (periodType === "year") return lineData.map((d) => ({ label: d.label, amount: d.value }));
@@ -141,10 +141,10 @@ export default function AnalyticsScreen() {
   }, [periodType, lineData]);
 
   const periodLabel = useMemo(() => {
-    if (periodType === "day") return dayLabel(selectedDate);
-    if (periodType === "month") return monthLabel(selectedYear, selectedMonth);
+    if (periodType === "day") return dayLabel(selectedDate, language);
+    if (periodType === "month") return monthLabel(selectedYear, selectedMonth, language);
     return String(selectedYear);
-  }, [periodType, selectedDate, selectedMonth, selectedYear]);
+  }, [language, periodType, selectedDate, selectedMonth, selectedYear]);
 
   const navigateDay = (dir: -1 | 1) => {
     Haptics.selectionAsync();
